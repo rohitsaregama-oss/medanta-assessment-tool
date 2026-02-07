@@ -9,7 +9,7 @@ from datetime import date
 
 # --- CONFIGURATION ---
 # PASTE YOUR NEW DEPLOY URL HERE
-BRIDGE_URL = "https://script.google.com/macros/s/AKfycbzi-r_-An34y1vTBMDtR90_P8XCxuG9SmYuA9XS38UdTQTCLsCZlQHxomAk7KZLe-I4/exec"
+BRIDGE_URL = "https://script.google.com/macros/s/AKfycbyI_e1d5mXJVqfUnwKQHYP6tbrXVGFQ0p3Q0qf-pCRPsu_CNc264MGj-REbBbMi35y_/exec"
 ADMIN_MASTER_KEY = "Medanta@2026"
 TOTAL_TEST_TIME = 25 * 60 
 
@@ -158,3 +158,4 @@ elif st.session_state.started:
             if idx < 24: st.session_state.q_index += 1
             else: st.session_state.review_mode = True
             st.rerun()
+
