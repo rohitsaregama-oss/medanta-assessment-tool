@@ -1,203 +1,58 @@
 import streamlit as st
 import pandas as pd
-import requests
-import json
-import time
-import random
-from PIL import Image
-from datetime import date
+import plotly.express as px
 
 # --- CONFIGURATION ---
-# PASTE YOUR GOOGLE APPS SCRIPT "WEB APP URL" HERE
-BRIDGE_URL = "https://script.google.com/macros/s/AKfycbxtCfmF-A0v9OsF9HWU12CS3smmphSSz_jkghC57kgkV3JAPjIb0f_cwCqNQM9qjS-S/exec"
-ADMIN_MASTER_KEY = "Medanta@2026"
-TOTAL_TEST_TIME = 25 * 60 
+ADMIN_PASSWORD = "Medanta@2026"
+# UPDATE THIS WITH YOUR "PUBLISH TO WEB" CSV LINK
+SHEET_CSV_URL = "https://script.google.com/macros/s/AKfycbzi-r_-An34y1vTBMDtR90_P8XCxuG9SmYuA9XS38UdTQTCLsCZlQHxomAk7KZLe-I4/exec"
 
-st.set_page_config(page_title="Medanta Assessment Tool", layout="centered")
+st.set_page_config(page_title="Medanta Admin Dashboard", layout="wide")
 
-# --- CUSTOM CSS FOR BACKGROUND & UI ---
-st.markdown(
-    """
-    <style>
-    .stApp {
-        background-image: linear-gradient(rgba(255,255,255,0.92), rgba(255,255,255,0.92)), 
-                          url("https://www.transparenttextures.com/patterns/medical-icons.png");
-        background-attachment: fixed;
-        background-size: cover;
-    }
-    .stTextInput > div > div > input, .stSelectbox > div > div > div, .stDateInput > div > div > input {
-        background-color: white !important;
-        border: 1px solid #ced4da !important;
-    }
-    section[data-testid="stSidebar"] {
-        background-color: rgba(248, 249, 250, 0.95);
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+if "admin_logged_in" not in st.session_state:
+    st.session_state.admin_logged_in = False
 
-# --- BEHAVIORAL BANK (FULL 50 QUESTIONS) ---
-BEHAVIORAL_BANK = [
-    {"question": "How do you handle a patient who refuses treatment?", "Option A": "Respect and document", "Option B": "Explain risks and notify doctor", "Option C": "Force it", "Option D": "Ignore", "Correct Answer": "Explain risks and notify doctor"},
-    {"question": "Notice a colleague skipping hand hygiene?", "Option A": "Ignore it", "Option B": "Politely remind them", "Option C": "Report to HR", "Option D": "Do the same", "Correct Answer": "Politely remind them"},
-    {"question": "A family member asks for another patient's status?", "Option A": "Tell them", "Option B": "Protect privacy and decline", "Option C": "Tell them to ask the patient", "Option D": "Share limited info", "Correct Answer": "Protect privacy and decline"},
-    {"question": "You make a minor medication error with no harm caused?", "Option A": "Hide it", "Option B": "Report it immediately", "Option C": "Wait and see", "Option D": "Tell only the patient", "Correct Answer": "Report it immediately"},
-    {"question": "Patient is angry about the wait time?", "Option A": "Argue back", "Option B": "Listen and empathize", "Option C": "Ignore them", "Option D": "Tell them to leave", "Correct Answer": "Listen and empathize"},
-    {"question": "Emergency alarm goes off in another zone?", "Option A": "Stay at your post", "Option B": "Follow hospital protocol", "Option C": "Run to help immediately", "Option D": "Ignore it", "Correct Answer": "Follow hospital protocol"},
-    {"question": "A doctor gives a verbal order you find unclear?", "Option A": "Follow it anyway", "Option B": "Ask for clarification", "Option C": "Ask a nurse", "Option D": "Wait for written order", "Correct Answer": "Ask for clarification"},
-    {"question": "You find a spill in the hallway?", "Option A": "Walk around it", "Option B": "Clean/Mark it immediately", "Option C": "Call housekeeping later", "Option D": "Tell a colleague", "Correct Answer": "Clean/Mark it immediately"},
-    {"question": "A patient falls while you are assisting them?", "Option A": "Pull them up quickly", "Option B": "Ease to floor and call help", "Option C": "Run for a doctor", "Option D": "Leave to get a chair", "Correct Answer": "Ease to floor and call help"},
-    {"question": "Conflicting instructions from two supervisors?", "Option A": "Pick one", "Option B": "Seek clarification from both", "Option C": "Do neither", "Option D": "Complain to HR", "Correct Answer": "Seek clarification from both"},
-    {"question": "What is the primary goal of JCI accreditation?", "Option A": "Hospital profit", "Option B": "Patient safety and quality", "Option C": "International fame", "Option D": "Staff reduction", "Correct Answer": "Patient safety and quality"},
-    {"question": "Correct way to identify a patient?", "Option A": "Room number", "Option B": "Name and DOB/ID number", "Option C": "Diagnosis", "Option D": "Asking 'Are you Mr. X?'", "Correct Answer": "Name and DOB/ID number"},
-    {"question": "When should you perform hand hygiene?", "Option A": "Only after patient contact", "Option B": "Before and after patient contact", "Option C": "Only when hands are soiled", "Option D": "Once every hour", "Correct Answer": "Before and after patient contact"},
-    {"question": "A colleague is being bullied in the unit?", "Option A": "Stay out of it", "Option B": "Support them and report", "Option C": "Join in", "Option D": "Tell them to be tougher", "Correct Answer": "Support them and report"},
-    {"question": "A patient’s vitals are slightly abnormal?", "Option A": "Re-check and report", "Option B": "Assume equipment is broken", "Option C": "Document and ignore", "Option D": "Wait for next shift", "Correct Answer": "Re-check and report"},
-    {"question": "Fire 'RACE' acronym: What does 'R' stand for?", "Option A": "Run", "Option B": "Rescue", "Option C": "Report", "Option D": "Ring alarm", "Correct Answer": "Rescue"},
-    {"question": "How to handle a sharps container that is full?", "Option A": "Push needles down", "Option B": "Close and replace it", "Option C": "Leave it for others", "Option D": "Shake it to make room", "Correct Answer": "Close and replace it"},
-    {"question": "Professionalism involves which of the following?", "Option A": "Arriving late", "Option B": "Punctuality and respect", "Option C": "Gossiping", "Option D": "Ignoring uniform codes", "Correct Answer": "Punctuality and respect"},
-    {"question": "A visitor is smoking in a non-smoking zone?", "Option A": "Ignore them", "Option B": "Politely inform of policy", "Option C": "Call security immediately", "Option D": "Ask for a cigarette", "Correct Answer": "Politely inform of policy"},
-    {"question": "Standard precautions apply to?", "Option A": "Only HIV patients", "Option B": "All patients", "Option C": "Only surgical patients", "Option D": "Only ICU patients", "Correct Answer": "All patients"},
-    {"question": "Correct use of PPE?", "Option A": "Re-use gloves", "Option B": "Discard after each use", "Option C": "Wear same mask all day", "Option D": "Wash gloves", "Correct Answer": "Discard after each use"},
-    {"question": "A patient is at high risk for pressure ulcers?", "Option A": "Turn every 8 hours", "Option B": "Turn every 2 hours", "Option C": "Keep them still", "Option D": "Use only one pillow", "Correct Answer": "Turn every 2 hours"},
-    {"question": "The 'Time Out' before surgery is for?", "Option A": "Staff coffee break", "Option B": "Verifying patient/site/procedure", "Option C": "Cleaning the room", "Option D": "Counting money", "Correct Answer": "Verifying patient/site/procedure"},
-    {"question": "Patient wants to read their own medical record?", "Option A": "Refuse", "Option B": "Follow hospital policy for access", "Option C": "Hand it over immediately", "Option D": "Tell them it's illegal", "Correct Answer": "Follow hospital policy for access"},
-    {"question": "You see a visitor looking lost?", "Option A": "Walk past", "Option B": "Offer assistance", "Option C": "Tell them to find a map", "Option D": "Point and walk away", "Correct Answer": "Offer assistance"},
-    {"question": "Washing hands with soap should take at least?", "Option A": "5 seconds", "Option B": "20 seconds", "Option C": "2 minutes", "Option D": "10 seconds", "Correct Answer": "20 seconds"},
-    {"question": "A patient is NPO but asks for water?", "Option A": "Give a small sip", "Option B": "Explain NPO status", "Option C": "Give a full glass", "Option D": "Ignore the request", "Correct Answer": "Explain NPO status"},
-    {"question": "Code Blue refers to?", "Option A": "Fire", "Option B": "Cardiac/Resp Arrest", "Option C": "Infant Abduction", "Option D": "Bomb threat", "Correct Answer": "Cardiac/Resp Arrest"},
-    {"question": "Documentation should be?", "Option A": "Done at end of week", "Option B": "Accurate and timely", "Option C": "Vague", "Option D": "Done in pencil", "Correct Answer": "Accurate and timely"},
-    {"question": "A patient's call bell has been ringing for 5 mins?", "Option A": "Wait for their nurse", "Option B": "Answer it immediately", "Option C": "Unplug it", "Option D": "Tell them to wait", "Correct Answer": "Answer it immediately"},
-    {"question": "Proper way to lift a heavy object?", "Option A": "Bend at waist", "Option B": "Bend at knees/Use legs", "Option C": "Twist your back", "Option D": "Hold far from body", "Correct Answer": "Bend at knees/Use legs"},
-    {"question": "A patient is hard of hearing?", "Option A": "Shout loudly", "Option B": "Face them and speak clearly", "Option C": "Talk to their family only", "Option D": "Avoid talking to them", "Correct Answer": "Face them and speak clearly"},
-    {"question": "Infection control: 'Donning' means?", "Option A": "Taking off PPE", "Option B": "Putting on PPE", "Option C": "Cleaning equipment", "Option D": "Washing hands", "Correct Answer": "Putting on PPE"},
-    {"question": "Medical waste in Yellow bags is?", "Option A": "General waste", "Option B": "Infectious waste", "Option C": "Glassware", "Option D": "Recyclables", "Correct Answer": "Infectious waste"},
-    {"question": "A patient is being discharged. Your role?", "Option A": "Say goodbye", "Option B": "Verify discharge instructions", "Option C": "Just wheel them out", "Option D": "Keep their records", "Correct Answer": "Verify discharge instructions"},
-    {"question": "Telephone orders should be?", "Option A": "Ignored", "Option B": "Read back and verified", "Option C": "Written later", "Option D": "Only for non-meds", "Correct Answer": "Read back and verified"},
-    {"question": "Patient feels dizzy while walking?", "Option A": "Keep walking", "Option B": "Assist to sit/lie down", "Option C": "Tell them to breathe", "Option D": "Leave to get help", "Correct Answer": "Assist to sit/lie down"},
-    {"question": "HIPAA/Privacy: Discussing patients in the lift?", "Option A": "Okay if quiet", "Option B": "Strictly prohibited", "Option C": "Okay if no names used", "Option D": "Okay with staff", "Correct Answer": "Strictly prohibited"},
-    {"question": "The '5 Rights' of medication include?", "Option A": "Right Patient/Right Med", "Option B": "Right Price", "Option C": "Right Doctor", "Option D": "Right Hospital", "Correct Answer": "Right Patient/Right Med"},
-    {"question": "You are late for your shift?", "Option A": "Sneak in", "Option B": "Notify supervisor early", "Option C": "Blame traffic later", "Option D": "Don't mention it", "Correct Answer": "Notify supervisor early"},
-    {"question": "Patient is at risk for suicide?", "Option A": "Leave them alone", "Option B": "Ensure constant observation", "Option C": "Give them privacy", "Option D": "Tell them to cheer up", "Correct Answer": "Ensure constant observation"},
-    {"question": "Correct order for 'Doffing' PPE?", "Option A": "Gown then Gloves", "Option B": "Gloves then Gown", "Option C": "Mask then Gloves", "Option D": "Doesn't matter", "Correct Answer": "Gloves then Gown"},
-    {"question": "A patient has a localized infection?", "Option A": "Use airborne precautions", "Option B": "Use contact precautions", "Option C": "No precautions needed", "Option D": "Wear two masks", "Correct Answer": "Use contact precautions"},
-    {"question": "Effective teamwork requires?", "Option A": "Working alone", "Option B": "Clear communication", "Option C": "Competition", "Option D": "Keeping secrets", "Correct Answer": "Clear communication"},
-    {"question": "Patient’s IV site is red and swollen?", "Option A": "Apply ice", "Option B": "Stop infusion/Notify nurse", "Option C": "Increase rate", "Option D": "Ignore it", "Correct Answer": "Stop infusion/Notify nurse"},
-    {"question": "The most common source of hospital infections?", "Option A": "Air vents", "Option B": "Hands of staff", "Option C": "Food", "Option D": "Visitors", "Correct Answer": "Hands of staff"},
-    {"question": "Patient is unconscious and needs care?", "Option A": "Wait for family", "Option B": "Implied consent/Emergency care", "Option C": "Do nothing", "Option D": "Ask a neighbor", "Correct Answer": "Implied consent/Emergency care"},
-    {"question": "Your ID badge should be?", "Option A": "In your pocket", "Option B": "Visible at all times", "Option C": "In your car", "Option D": "Left at home", "Correct Answer": "Visible at all times"},
-    {"question": "A patient complains about a doctor's behavior?", "Option A": "Agree with them", "Option B": "Escalate to Patient Relations", "Option C": "Tell them to be quiet", "Option D": "Defend the doctor", "Correct Answer": "Escalate to Patient Relations"},
-    {"question": "Cultural competence means?", "Option A": "Treating everyone differently", "Option B": "Respecting all backgrounds", "Option C": "Ignoring culture", "Option D": "Stereotyping", "Correct Answer": "Respecting all backgrounds"}
-]
-
-@st.cache_data
-def get_hybrid_questions(level_choice):
-    try:
-        df = pd.read_excel("questions.xlsx")
-        df = df.fillna("")
-        level_col = next((c for c in df.columns if 'level' in c.lower()), None)
-        if not level_col:
-            st.error("Error: Could not find 'Level' column in Excel.")
-            return pd.DataFrame()
-
-        df[level_col] = df[level_col].astype(str).str.strip().str.lower()
-        target = str(level_choice).strip().lower()
-        
-        tech_filtered = df[df[level_col] == target]
-        if tech_filtered.empty:
-            st.error(f"No questions found for '{level_choice}' in Excel.")
-            return pd.DataFrame()
-            
-        num_behav = random.randint(5, 8)
-        num_tech = 25 - num_behav
-        tech_sel = tech_filtered.sample(n=min(len(tech_filtered), num_tech))
-        behav_sel = pd.DataFrame(random.sample(BEHAVIORAL_BANK, num_behav))
-        
-        return pd.concat([tech_sel, behav_sel], ignore_index=True).sample(frac=1).reset_index(drop=True)
-    except Exception as e:
-        st.error(f"Excel Error: {e}")
-        return pd.DataFrame()
-
-# --- STATE INITIALIZATION ---
-if "started" not in st.session_state:
-    st.session_state.update({"started": False, "review_mode": False, "q_index": 0, "answers": {}, "candidate_data": {}, "level": "beginner"})
-
-# --- HEADER (Single Logo) ---
-col1, col2, col3 = st.columns([2, 4, 2])
-try:
-    col1.image("MHPL logo 2.png", use_container_width=True)
-except:
-    st.write("🏥 **Medanta Hospital Lucknow**")
-
-st.title("Staff Assessment Tool")
-
-# --- SIDEBAR (ADMIN ONLY) ---
-with st.sidebar:
-    st.subheader("⚙️ Admin Controls")
-    unlock_admin = st.checkbox("Unlock Level Settings")
-    if unlock_admin:
-        key = st.text_input("Master Key", type="password")
-        if key == ADMIN_MASTER_KEY:
-            st.session_state.level = st.selectbox("Assign Test Level", ["beginner", "intermediate", "advanced"], index=["beginner", "intermediate", "advanced"].index(st.session_state.level))
-            st.success(f"Level set to: {st.session_state.level.upper()}")
-        elif key: st.error("Invalid Master Key")
-    st.divider()
-    st.info(f"Current Difficulty: **{st.session_state.level.upper()}**")
-
-# --- LOGIN SCREEN ---
-if not st.session_state.started:
-    st.subheader("Staff Information")
-    name = st.text_input("Full Name")
-    dob = st.date_input("Date of Birth", min_value=date(1960, 1, 1), max_value=date(2010, 1, 1))
-    qual = st.text_input("Qualification")
-    cat = st.selectbox("Staff Category", ["Nursing", "Non-Nursing"])
-    reg = st.text_input("Registration Number") if cat == "Nursing" else "N/A"
-    college = st.text_input("College Name")
-    contact = st.text_input("Contact Number (10 digits)")
-
-    if st.button("Start Assessment", type="primary"):
-        if name and len(contact) == 10:
-            st.session_state.candidate_data = {"name": name, "dob": str(dob), "qualification": qual, "category": cat, "reg_no": reg, "college": college, "contact": contact}
-            st.session_state.questions_df = get_hybrid_questions(st.session_state.level)
-            if not st.session_state.questions_df.empty:
-                st.session_state.started = True
-                st.session_state.start_time = time.time()
+if not st.session_state.admin_logged_in:
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.title("🏥 Medanta Admin Login")
+        pw = st.text_input("Enter Master Key", type="password")
+        if st.button("Access Dashboard"):
+            if pw == ADMIN_PASSWORD:
+                st.session_state.admin_logged_in = True
                 st.rerun()
-        else: st.error("Please fill all fields and enter a 10-digit mobile number.")
+            else: st.error("Invalid Key")
+else:
+    st.title("🏥 Medanta Assessment Analytics")
+    try:
+        df = pd.read_csv(SHEET_CSV_URL)
+        if not df.empty:
+            df['score_num'] = df['score'].astype(str).str.replace('%', '').astype(float)
+            df['dur_num'] = df['duration'].astype(str).str.replace(' mins', '').astype(float)
 
-# --- TESTING INTERFACE ---
-elif st.session_state.started:
-    q_df = st.session_state.questions_df
-    elapsed = time.time() - st.session_state.start_time
-    rem = max(0, TOTAL_TEST_TIME - elapsed)
-    st.sidebar.metric("Time Remaining", f"{int(rem // 60)}m {int(rem % 60)}s")
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("Total Candidates", len(df))
+            m2.metric("Avg. Score", f"{round(df['score_num'].mean(), 1)}%")
+            m3.metric("Pass Rate (>=80%)", f"{round((len(df[df['score_num'] >= 80])/len(df))*100, 1)}%")
+            m4.metric("Avg. Time", f"{round(df['dur_num'].mean(), 1)} mins")
 
-    if st.session_state.review_mode:
-        st.subheader("Review & Submit")
-        if st.button("Final Submit", type="primary") or rem <= 0:
-            correct = sum(1 for i, row in q_df.iterrows() if st.session_state.answers.get(f"Q{i+1}") == row["Correct Answer"])
-            score_pct = f"{round((correct/25)*100, 2)}%"
-            duration = f"{round((time.time() - st.session_state.start_time)/60, 2)} mins"
+            st.divider()
+            c1, c2 = st.columns(2)
+            with c1:
+                st.subheader("Score Distribution")
+                st.plotly_chart(px.histogram(df, x="score_num", nbins=10, color_discrete_sequence=['#e63946']), use_container_width=True)
+            with c2:
+                st.subheader("Staff Categories")
+                st.plotly_chart(px.pie(df, names='category', hole=0.4), use_container_width=True)
+
+            st.subheader("📋 JCI Audit Log")
+            st.dataframe(df[['Timestamp', 'name', 'category', 'reg_no', 'score', 'duration']], use_container_width=True)
             
-            # THE DATA BRIDGE (Sends results to Google Sheets)
-            payload = {**st.session_state.candidate_data, "score": score_pct, "duration": duration, "answers": json.dumps(st.session_state.answers)}
-            try:
-                res = requests.post(BRIDGE_URL, json=payload, timeout=15)
-                if res.status_code == 200:
-                    st.balloons(); st.success(f"Assessment Submitted! Score: {score_pct}"); st.session_state.started = False
-                else: st.error("Submission Error. Check Bridge URL.")
-            except: st.error("Connection Error to Google Sheet.")
-    else:
-        idx = st.session_state.q_index
-        q_row = q_df.iloc[idx]
-        st.write(f"### Question {idx+1} of 25")
-        st.write(f"**{q_row['question']}**")
-        ans = st.radio("Select choice:", [q_row["Option A"], q_row["Option B"], q_row["Option C"], q_row["Option D"]], key=f"q{idx}")
-        if st.button("Next Question"):
-            st.session_state.answers[f"Q{idx+1}"] = ans
-            if idx < 24: st.session_state.q_index += 1
-            else: st.session_state.review_mode = True
-            st.rerun()
+            st.download_button("📥 Download JCI Report", df.to_csv(index=False).encode('utf-8'), "Medanta_Report.csv", "text/csv")
+        else: st.warning("Sheet is empty.")
+    except Exception as e:
+        st.error("Sync Error: Ensure Google Sheet is 'Published to Web' as CSV.")
 
-
+    if st.sidebar.button("Logout"):
+        st.session_state.admin_logged_in = False
+        st.rerun()
