@@ -72,8 +72,11 @@ st.set_page_config(page_title="Medanta Assessment", layout="centered")
 # --- HEADER ---
 col1, col2, col3 = st.columns([2, 4, 2])
 try:
+    # This aligns the Medanta logo to the left
     col1.image("MHPL logo 2.png", use_container_width=True)
-    except:
+    # The Assessment logo code has been removed from here
+except:
+    # This only runs if the logo file is missing
     st.write("🏥 **Medanta Hospital Lucknow**")
 
 st.title("Staff Assessment Tool")
@@ -174,3 +177,4 @@ elif st.session_state.started:
             else: st.session_state.review_mode = True
 
             st.rerun()
+
