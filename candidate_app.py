@@ -110,38 +110,31 @@ def get_hybrid_questions(level_choice):
         st.error(f"Excel Error: {e}")
         return pd.DataFrame()
 
-# --- LOGIN & ADMIN ---
-if "started" not in st.session_state:
-    st.session_state.update({"started": False, "review_mode": False, "q_index": 0, "answers": {}, "candidate_data": {}, "level": "beginner"})
-
-if not st.session_state.started:
-    with st.expander("Admin: Set Level"):
+# --- ADMIN SETTINGS (MOVED TO SIDEBAR) ---
+with st.sidebar:
+    st.subheader("⚙️ Admin Controls")
+    # A hidden checkbox to unlock the level settings
+    unlock_admin = st.checkbox("Unlock Level Settings")
+    
+    if unlock_admin:
         key = st.text_input("Master Key", type="password")
         if key == ADMIN_MASTER_KEY:
-            st.session_state.level = st.selectbox("Assign Level", ["beginner", "intermediate", "advanced"])
+            st.session_state.level = st.selectbox(
+                "Assign Test Level", 
+                ["beginner", "intermediate", "advanced"],
+                index=["beginner", "intermediate", "advanced"].index(st.session_state.level)
+            )
+            st.success(f"Level set to: {st.session_state.level}")
+        elif key:
+            st.error("Invalid Master Key")
+    
+    st.divider()
+    st.info(f"Current Difficulty: **{st.session_state.level.upper()}**")
 
+# --- MAIN SCREEN (CANDIDATE ONLY) ---
+if not st.session_state.started:
     st.subheader("Staff Information")
-    name = st.text_input("Full Name")
-    dob = st.date_input("Date of Birth", min_value=date(1960, 1, 1))
-    qual = st.text_input("Qualification")
-    cat = st.selectbox("Staff Category", ["Nursing", "Non-Nursing"])
-    reg = st.text_input("Registration Number") if cat == "Nursing" else "N/A"
-    college = st.text_input("College Name")
-    contact = st.text_input("Contact Number (10 digits)")
-
-    if st.button("Start Assessment"):
-        if name and len(contact) == 10:
-            st.session_state.candidate_data = {
-                "name": name, "dob": str(dob), "qualification": qual, 
-                "category": cat, "reg_no": reg, "college": college, "contact": contact
-            }
-            st.session_state.questions_df = get_hybrid_questions(st.session_state.level)
-            if not st.session_state.questions_df.empty:
-                st.session_state.started = True
-                st.session_state.start_time = time.time()
-                st.rerun()
-        else:
-            st.error("Please fill all fields and enter 10-digit mobile.")
+    # ... (Rest of your candidate input fields go here)
 
 # --- TESTING INTERFACE ---
 elif st.session_state.started:
@@ -177,4 +170,5 @@ elif st.session_state.started:
             else: st.session_state.review_mode = True
 
             st.rerun()
+
 
