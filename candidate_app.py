@@ -9,7 +9,7 @@ from datetime import date
 
 # --- CONFIGURATION ---
 # PASTE YOUR GOOGLE APPS SCRIPT "WEB APP URL" HERE
-BRIDGE_URL = "https://script.google.com/macros/s/AKfycbzfiSf_CkhQbih3j6K3Vw-SBsAswJzCHVLXCdOaDYlVc2N8YKZ_JmkWqRo9eAm4Vid8/exec"
+BRIDGE_URL = "https://script.google.com/macros/s/AKfycbxtCfmF-A0v9OsF9HWU12CS3smmphSSz_jkghC57kgkV3JAPjIb0f_cwCqNQM9qjS-S/exec"
 ADMIN_MASTER_KEY = "Medanta@2026"
 TOTAL_TEST_TIME = 25 * 60 
 
@@ -199,4 +199,5 @@ elif st.session_state.started:
             if idx < 24: st.session_state.q_index += 1
             else: st.session_state.review_mode = True
             st.rerun()
+
 
