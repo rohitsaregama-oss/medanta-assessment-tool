@@ -73,8 +73,7 @@ st.set_page_config(page_title="Medanta Assessment", layout="centered")
 col1, col2, col3 = st.columns([2, 4, 2])
 try:
     col1.image("MHPL logo 2.png", use_container_width=True)
-    col3.image("Assessment_tool_logo.png", use_container_width=True)
-except:
+    except:
     st.write("🏥 **Medanta Hospital Lucknow**")
 
 st.title("Staff Assessment Tool")
@@ -173,4 +172,5 @@ elif st.session_state.started:
             st.session_state.answers[f"Q{idx+1}"] = ans
             if idx < 24: st.session_state.q_index += 1
             else: st.session_state.review_mode = True
+
             st.rerun()
