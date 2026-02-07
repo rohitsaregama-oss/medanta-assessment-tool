@@ -8,10 +8,9 @@ from datetime import date, datetime
 import io
 
 # --- CONFIGURATION ---
-# Updated Bridge URL as requested
 BRIDGE_URL = "https://script.google.com/macros/s/AKfycbzCICknuaFGUOqwPX_kMnTy_1FtA4ppm44ZAft56-Y21_4xCidrjvTkM6gwcuZW_4so/exec"
 ADMIN_MASTER_KEY = "Medanta@2026"
-TOTAL_TEST_TIME = 25 * 60  # Total 25 minutes
+TOTAL_TEST_TIME = 25 * 60  
 
 st.set_page_config(page_title="Medanta Staff Assessment", layout="centered")
 
@@ -34,7 +33,31 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 50 BEHAVIORAL QUESTIONS WITH TOPICS ---
+# --- HARD-CODED IMPROVEMENT TIPS (< 60%) ---
+IMPROVEMENT_TIPS = [
+    "Clinical Safety: Focus on Medication Safety. Always verify the '5 Rights' before administration.",
+    "Patient Rights: Patient dignity is paramount. Review JCI guidelines on informed consent.",
+    "Infection Control: Hand hygiene is the #1 way to stop infections. Review the '5 Moments'.",
+    "Emergency Response: Seconds count. Memorize all Emergency Codes (Blue, Red, Pink).",
+    "Documentation: 'If it isn't documented, it didn't happen.' Practice timely and accurate charting.",
+    "Communication: Use the ISBAR technique (Situation, Background, Assessment, Recommendation).",
+    "Professionalism: Adhere strictly to the hospital ethics, uniform code, and punctuality.",
+    "Waste Management: Incorrect segregation leads to injuries. Re-study the BMW color-coding.",
+    "Patient Privacy: Never discuss patient details in public areas like lifts or cafeterias.",
+    "Environment Safety: Always report spills or faulty equipment immediately to maintenance.",
+    "Teamwork: Healthcare is a team sport. Focus on active listening and mutual support.",
+    "Critical Thinking: Understand orders—if an instruction is unclear, 'Stop and Seek Clarification'.",
+    "Fall Prevention: Ensure bed rails are up and call bells are within the patient's reach.",
+    "Time Management: Prioritize tasks based on patient acuity and clinical urgency.",
+    "Cultural Competence: Practice empathy and respect for different cultural and religious beliefs.",
+    "Equipment Handling: Ensure you are trained on SOPs for ventilators, pumps, and monitors.",
+    "Personal Hygiene: Keep nails short and follow the 'Below the Elbow' policy strictly.",
+    "Conflict Resolution: When dealing with angry attendants, use de-escalation and stay calm.",
+    "Self-Development: Regularly attend CNE (Continuing Nursing Education) to stay updated.",
+    "JCI Awareness: Focus on International Patient Safety Goals (IPSG) to ensure audit readiness."
+]
+
+# --- 50 BEHAVIORAL QUESTIONS ---
 BEHAVIORAL_BANK = [
     {"question": "How do you handle a patient who refuses treatment?", "Option A": "Respect and document", "Option B": "Explain risks and notify doctor", "Option C": "Force it", "Option D": "Ignore", "Correct Answer": "Explain risks and notify doctor", "Topic": "Patient Rights"},
     {"question": "Notice a colleague skipping hand hygiene?", "Option A": "Ignore it", "Option B": "Politely remind them", "Option C": "Report to HR", "Option D": "Do the same", "Correct Answer": "Politely remind them", "Topic": "Infection Control"},
@@ -96,7 +119,7 @@ if "started" not in st.session_state:
         "start_time": None, "questions_df": None
     })
 
-# Sidebar Admin
+# --- SIDEBAR ADMIN ---
 with st.sidebar:
     st.subheader("⚙️ Admin")
     if st.checkbox("Unlock Level Settings"):
@@ -125,7 +148,6 @@ if not st.session_state.started:
                 "category": cat, "reg_no": reg, "college": college, "contact": contact
             }
             try:
-                # Load Excel questions and mix with Behavioral Bank
                 df_xl = pd.read_excel("questions.xlsx")
                 tech_q = df_xl[df_xl['level'].str.lower() == st.session_state.level.lower()].sample(n=18)
                 behav_q = pd.DataFrame(random.sample(BEHAVIORAL_BANK, 7))
@@ -155,7 +177,6 @@ elif st.session_state.started:
         st.title("📝 Review & Submit")
         st.write("Click any question button to go back and modify your answer.")
         
-        # Grid layout for question review
         grid = st.columns(5)
         for i in range(25):
             status = "✅" if f"Q{i+1}" in st.session_state.answers else "⚪"
@@ -166,15 +187,11 @@ elif st.session_state.started:
         
         st.divider()
         if st.button("Final Submit Assessment", type="primary", use_container_width=True):
-            # Scoring and Feedback Logic
             correct = 0
-            weak_topics = []
             for idx, row in q_df.iterrows():
                 user_ans = st.session_state.answers.get(f"Q{idx+1}")
                 if user_ans == row["Correct Answer"]:
                     correct += 1
-                else:
-                    weak_topics.append(row.get("Topic", "General Clinical Protocols"))
             
             score_num = (correct / 25) * 100
             score_pct = f"{score_num}%"
@@ -189,22 +206,31 @@ elif st.session_state.started:
             if score_num >= 60:
                 st.balloons()
                 st.success(f"🎊 PASS! Final Score: {score_pct}")
-                eval_msg = "Sufficient knowledge demonstrated."
+                eval_msg = "Sufficient knowledge demonstrated for hospital protocols."
             else:
                 st.error(f"❌ RESULT: NOT CLEARED. Final Score: {score_pct}")
-                recommends = list(set(weak_topics))[:3]
-                st.warning(f"Required Improvement in: {', '.join(recommends)}")
-                eval_msg = f"Needs improvement in: {', '.join(recommends)}"
+                # DISPLAY RANDOM IMPROVEMENT TIP
+                selected_tip = random.choice(IMPROVEMENT_TIPS)
+                st.warning(f"**Improvement Guidance:** {selected_tip}")
+                eval_msg = f"Needs improvement. Focus area: {selected_tip}"
 
             # Progress Report Download
             report = f"""
             MEDANTA STAFF ASSESSMENT PROGRESS REPORT
-            Candidate: {st.session_state.candidate_data['name']}
-            Date: {datetime.now().strftime('%Y-%m-%d')}
-            Final Score: {score_pct}
-            Evaluation: {eval_msg}
+            ----------------------------------------
+            Candidate Name: {st.session_state.candidate_data['name']}
+            Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+            Category: {st.session_state.candidate_data['category']}
+            
+            Final Marks: {score_pct}
+            Result: {"PASSED" if score_num >= 60 else "NOT CLEARED"}
+            
+            PERFORMANCE EVALUATION:
+            {eval_msg}
+            
+            Note: This is a computer-generated report for JCI Audit compliance.
             """
-            st.download_button("📥 Download Progress Report", report, file_name=f"Report_{st.session_state.candidate_data['name']}.txt")
+            st.download_button("📥 Download Progress Report", report, file_name=f"Assessment_Report_{st.session_state.candidate_data['name']}.txt")
             st.session_state.started = False
 
     # --- QUESTION VIEW ---
@@ -217,11 +243,9 @@ elif st.session_state.started:
         opts = [row["Option A"], row["Option B"], row["Option C"], row["Option D"]]
         prev_ans = st.session_state.answers.get(f"Q{idx+1}")
         
-        # Radio button with pre-selected previous answer for review purposes
         choice = st.radio("Select Choice:", opts, index=opts.index(prev_ans) if prev_ans in opts else 0, key=f"q_radio_{idx}")
         st.session_state.answers[f"Q{idx+1}"] = choice
         
-        # Navigation Buttons
         c1, c2, c3 = st.columns([1,1,2])
         if idx > 0 and c1.button("⬅️ Previous"):
             st.session_state.q_index -= 1
@@ -230,7 +254,6 @@ elif st.session_state.started:
             st.session_state.q_index += 1
             st.rerun()
             
-        # The Blue Review Button
         if c3.button("Review All Answers 📝", use_container_width=True):
             st.session_state.review_mode = True
             st.rerun()
