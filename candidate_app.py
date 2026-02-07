@@ -110,10 +110,9 @@ def get_hybrid_questions(level_choice):
         st.error(f"Excel Error: {e}")
         return pd.DataFrame()
 
-# --- ADMIN SETTINGS (MOVED TO SIDEBAR) ---
+# --- ADMIN SETTINGS (IN SIDEBAR) ---
 with st.sidebar:
     st.subheader("⚙️ Admin Controls")
-    # A hidden checkbox to unlock the level settings
     unlock_admin = st.checkbox("Unlock Level Settings")
     
     if unlock_admin:
@@ -131,10 +130,34 @@ with st.sidebar:
     st.divider()
     st.info(f"Current Difficulty: **{st.session_state.level.upper()}**")
 
-# --- MAIN SCREEN (CANDIDATE ONLY) ---
+# --- MAIN SCREEN (ALWAYS VISIBLE TO STAFF) ---
 if not st.session_state.started:
     st.subheader("Staff Information")
-    # ... (Rest of your candidate input fields go here)
+    
+    # These fields will now show up properly on the white screen
+    name = st.text_input("Full Name")
+    dob = st.date_input("Date of Birth", min_value=date(1960, 1, 1))
+    qual = st.text_input("Qualification")
+    cat = st.selectbox("Staff Category", ["Nursing", "Non-Nursing"])
+    reg = st.text_input("Registration Number") if cat == "Nursing" else "N/A"
+    college = st.text_input("College Name")
+    contact = st.text_input("Contact Number (10 digits)")
+
+    if st.button("Start Assessment", type="primary"):
+        if name and len(contact) == 10:
+            st.session_state.candidate_data = {
+                "name": name, "dob": str(dob), "qualification": qual, 
+                "category": cat, "reg_no": reg, "college": college, "contact": contact
+            }
+            # Fetch the questions based on the level set in the sidebar
+            st.session_state.questions_df = get_hybrid_questions(st.session_state.level)
+            
+            if not st.session_state.questions_df.empty:
+                st.session_state.started = True
+                st.session_state.start_time = time.time()
+                st.rerun()
+        else:
+            st.error("Please fill all fields and provide a valid 10-digit mobile number.")
 
 # --- TESTING INTERFACE ---
 elif st.session_state.started:
@@ -170,5 +193,6 @@ elif st.session_state.started:
             else: st.session_state.review_mode = True
 
             st.rerun()
+
 
 
