@@ -8,17 +8,17 @@ from PIL import Image
 from datetime import date
 
 # --- CONFIGURATION ---
-# PASTE YOUR NEW DEPLOY URL HERE
-BRIDGE_URL = "https://script.google.com/macros/s/AKfycbyI_e1d5mXJVqfUnwKQHYP6tbrXVGFQ0p3Q0qf-pCRPsu_CNc264MGj-REbBbMi35y_/exec"
+BRIDGE_URL = "https://script.google.com/macros/s/AKfycbykNToCtX66Enoiu9YwK4_h12JSlm-uwqvTrVBng4ujMrjJUKtub7GkHuaPGHzs8yHt/exec"
 ADMIN_MASTER_KEY = "Medanta@2026"
-TOTAL_TEST_TIME = 25 * 60 
+TOTAL_TEST_TIME = 25 * 60  # 25 Minutes
+SEC_PER_QUESTION = 60      # 60 Seconds per question
 
 st.set_page_config(page_title="Medanta Assessment Tool", layout="centered")
 
-# --- BACKGROUND ---
+# --- CUSTOM CSS ---
 st.markdown("<style>.stApp {background-image: linear-gradient(rgba(255,255,255,0.92), rgba(255,255,255,0.92)), url('https://www.transparenttextures.com/patterns/medical-icons.png'); background-attachment: fixed; background-size: cover;}</style>", unsafe_allow_html=True)
 
-# --- BEHAVIORAL BANK (FULL 50) ---
+# --- FULL BEHAVIORAL BANK (50 QUESTIONS) ---
 BEHAVIORAL_BANK = [
     {"question": "How do you handle a patient who refuses treatment?", "Option A": "Respect and document", "Option B": "Explain risks and notify doctor", "Option C": "Force it", "Option D": "Ignore", "Correct Answer": "Explain risks and notify doctor"},
     {"question": "Notice a colleague skipping hand hygiene?", "Option A": "Ignore it", "Option B": "Politely remind them", "Option C": "Report to HR", "Option D": "Do the same", "Correct Answer": "Politely remind them"},
@@ -88,24 +88,25 @@ def get_hybrid_questions(level_choice):
     except:
         return pd.DataFrame()
 
+# --- INITIALIZE STATE ---
 if "started" not in st.session_state:
-    st.session_state.update({"started": False, "review_mode": False, "q_index": 0, "answers": {}, "candidate_data": {}, "level": "beginner"})
+    st.session_state.update({
+        "started": False, "review_mode": False, "q_index": 0, "answers": {}, 
+        "candidate_data": {}, "level": "beginner", "q_start_time": 0
+    })
 
-col1, col2, col3 = st.columns([2, 4, 2])
-try:
-    col1.image("MHPL logo 2.png", use_container_width=True)
-except:
-    st.write("🏥 **Medanta Hospital**")
-
-st.title("Staff Assessment Tool")
-
+# --- SIDEBAR ADMIN ---
 with st.sidebar:
     st.subheader("⚙️ Admin")
     if st.checkbox("Unlock"):
         if st.text_input("Key", type="password") == ADMIN_MASTER_KEY:
             st.session_state.level = st.selectbox("Level", ["beginner", "intermediate", "advanced"])
+    st.divider()
+    st.info(f"Level: {st.session_state.level.upper()}")
 
+# --- MAIN LOGIC ---
 if not st.session_state.started:
+    st.title("🏥 Medanta Staff Assessment")
     st.subheader("Staff Information")
     name = st.text_input("Full Name")
     dob = st.date_input("Date of Birth", min_value=date(1960, 1, 1))
@@ -113,49 +114,82 @@ if not st.session_state.started:
     cat = st.selectbox("Staff Category", ["Nursing", "Non-Nursing"])
     reg = st.text_input("Registration Number") if cat == "Nursing" else "N/A"
     college = st.text_input("College Name")
-    contact = st.text_input("Contact Number (10 digits)")
-    
+    contact = st.text_input("Contact Number")
+
     if st.button("Start Assessment", type="primary"):
         if name and len(contact) == 10:
-            st.session_state.candidate_data = {"name": name, "dob": str(dob), "qualification": qual, "category": cat, "reg_no": reg, "college": college, "contact": contact}
+            st.session_state.candidate_data = {
+                "name": name, "dob": str(dob), "qualification": qual, 
+                "category": cat, "reg_no": reg, "college": college, "contact": contact
+            }
             st.session_state.questions_df = get_hybrid_questions(st.session_state.level)
-            if not st.session_state.questions_df.empty:
-                st.session_state.started = True
-                st.session_state.start_time = time.time()
-                st.rerun()
-        else:
-            st.error("Fill all fields correctly.")
+            st.session_state.started = True
+            st.session_state.start_time = time.time()
+            st.session_state.q_start_time = time.time() # Reset question timer
+            st.rerun()
 
 elif st.session_state.started:
     q_df = st.session_state.questions_df
-    elapsed = time.time() - st.session_state.start_time
-    rem = max(0, TOTAL_TEST_TIME - elapsed)
-    st.sidebar.metric("Time Remaining", f"{int(rem // 60)}m {int(rem % 60)}s")
+    now = time.time()
+    
+    # Overall Test Timer
+    elapsed_total = now - st.session_state.start_time
+    rem_total = max(0, TOTAL_TEST_TIME - elapsed_total)
+    
+    # Per-Question Timer
+    elapsed_q = now - st.session_state.q_start_time
+    rem_q = max(0, SEC_PER_QUESTION - elapsed_q)
+    
+    st.sidebar.metric("⏳ Total Time Left", f"{int(rem_total // 60)}m {int(rem_total % 60)}s")
+    
+    if not st.session_state.review_mode:
+        st.sidebar.metric("⏱️ Question Time", f"{int(rem_q)}s")
+
+    # Force auto-next if question timer hits zero
+    if rem_q <= 0 and not st.session_state.review_mode:
+        idx = st.session_state.q_index
+        if f"Q{idx+1}" not in st.session_state.answers:
+            st.session_state.answers[f"Q{idx+1}"] = "Time Expired"
+        if idx < 24:
+            st.session_state.q_index += 1
+            st.session_state.q_start_time = time.time()
+        else:
+            st.session_state.review_mode = True
+        st.rerun()
 
     if st.session_state.review_mode:
-        st.subheader("Review & Submit")
-        if st.button("Final Submit", type="primary") or rem <= 0:
+        st.header("📝 Review Your Answers")
+        review_data = []
+        for i in range(25):
+            user_ans = st.session_state.answers.get(f"Q{i+1}", "Not Answered")
+            review_data.append({"No.": i+1, "Question": q_df.iloc[i]['question'][:60]+"...", "Answer": user_ans})
+        st.table(pd.DataFrame(review_data))
+
+        if st.button("🚀 Final Submit", type="primary") or rem_total <= 0:
             correct = sum(1 for i, row in q_df.iterrows() if st.session_state.answers.get(f"Q{i+1}") == row["Correct Answer"])
             score_pct = f"{round((correct/25)*100, 2)}%"
             duration = f"{round((time.time() - st.session_state.start_time)/60, 2)} mins"
             payload = {**st.session_state.candidate_data, "score": score_pct, "duration": duration, "answers": json.dumps(st.session_state.answers)}
             try:
                 res = requests.post(BRIDGE_URL, json=payload, timeout=15)
-                if res.text == "Success":
+                if res.status_code == 200:
                     st.balloons(); st.success(f"Submitted! Score: {score_pct}"); st.session_state.started = False
-                else:
-                    st.error("Submission Error. Check Bridge URL.")
-            except:
-                st.error("Bridge Connection Failed.")
+                else: st.error("Submission failed.")
+            except: st.error("Connection lost.")
     else:
         idx = st.session_state.q_index
         q_row = q_df.iloc[idx]
-        st.write(f"### Question {idx+1} of 25")
-        st.write(f"**{q_row['question']}**")
-        ans = st.radio("Select choice:", [q_row["Option A"], q_row["Option B"], q_row["Option C"], q_row["Option D"]], key=f"q{idx}")
-        if st.button("Next Question"):
-            st.session_state.answers[f"Q{idx+1}"] = ans
-            if idx < 24: st.session_state.q_index += 1
-            else: st.session_state.review_mode = True
+        st.subheader(f"Question {idx+1} of 25")
+        st.write(f"### {q_row['question']}")
+        options = [q_row["Option A"], q_row["Option B"], q_row["Option C"], q_row["Option D"]]
+        current_ans = st.session_state.answers.get(f"Q{idx+1}", options[0])
+        user_choice = st.radio("Choose one:", options, index=options.index(current_ans) if current_ans in options else 0, key=f"r_{idx}")
+        
+        if st.button("Save & Next ➡️"):
+            st.session_state.answers[f"Q{idx+1}"] = user_choice
+            if idx < 24:
+                st.session_state.q_index += 1
+                st.session_state.q_start_time = time.time() # Reset timer for next question
+            else:
+                st.session_state.review_mode = True
             st.rerun()
-
