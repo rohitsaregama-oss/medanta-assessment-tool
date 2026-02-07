@@ -7,7 +7,8 @@ from PIL import Image
 ADMIN_PASSWORD = "Medanta@2026"
 # Replace with your actual Google Sheet CSV export link if you want live data sync
 # For now, it reads the data you manually export or connect via API
-SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQBqxPaHhsk-AUD4E70Sph8chi_MgRyOM8xDhRnGHX1s70nvokG-u8K9dWhT4ZPRPDy5IRYWJZZYpFz/pub?gid=0&single=true&output=csv" 
+# PASTE YOUR NEW CSV LINK HERE
+SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQBqxPaHhsk-AUD4E70Sph8chi_MgRyOM8xDhRnGHX1s70nvokG-u8K9dWhT4ZPRPDy5IRYWJZZYpFz/pub?gid=0&single=true&output=csv"
 
 st.set_page_config(page_title="Medanta Admin Dashboard", layout="wide")
 
@@ -93,3 +94,4 @@ else:
         st.session_state.admin_logged_in = False
 
         st.rerun()
+
