@@ -6,14 +6,18 @@ import random
 from datetime import date
 import os
 
-# ================= SAFE SECRET LOAD =================
+# ======================================================
+# SAFE SECRET LOAD
+# ======================================================
 try:
     ADMIN_MASTER_KEY = st.secrets["ADMIN_MASTER_KEY"]
 except:
     ADMIN_MASTER_KEY = None
 
-# ================= CONFIG =================
-BRIDGE_URL = "https://script.google.com/macros/s/AKfycbxxBVwY1Lft6M-4iBGsLVCUvPUKPEhrK6Yvra8Ojs6rSQvgngfkYp89yskyfUZ1MFRp/exec"
+# ======================================================
+# CONFIG
+# ======================================================
+BRIDGE_URL = "https://script.google.com/macros/s/AKfycbyXHJpC7L82bb2EKDzQ1N4MK2aWMKv3F5jykexzKC0d3FdJyiy0jQcyyA-w-MCz7gJ-/exec"
 
 TOTAL_QUESTIONS = 25
 TECH_Q_COUNT = 18
@@ -27,7 +31,9 @@ REVIEW_TIME_LIMIT = 120  # seconds
 
 st.set_page_config(page_title="Medanta Staff Assessment", layout="centered")
 
-# ================= SESSION INIT =================
+# ======================================================
+# SESSION STATE INIT
+# ======================================================
 if "started" not in st.session_state:
     st.session_state.update({
         "started": False,
@@ -45,7 +51,9 @@ if "started" not in st.session_state:
         "admin_unlocked": False
     })
 
-# ================= 50 BEHAVIORAL QUESTIONS =================
+# ======================================================
+# 50 BEHAVIORAL QUESTIONS
+# ======================================================
 BEHAVIORAL_BANK = [
     {"question":"How do you handle a patient who refuses treatment?","Option A":"Respect and document","Option B":"Explain risks and notify doctor","Option C":"Force treatment","Option D":"Ignore","Correct Answer":"Explain risks and notify doctor"},
     {"question":"You notice a colleague skipping hand hygiene.","Option A":"Ignore","Option B":"Politely remind","Option C":"Report to HR","Option D":"Do the same","Correct Answer":"Politely remind"},
@@ -95,7 +103,9 @@ BEHAVIORAL_BANK = [
     {"question":"Cultural competence.","Option A":"Ignore culture","Option B":"Respect all","Option C":"Stereotype","Option D":"Avoid","Correct Answer":"Respect all"}
 ]
 
-# ================= SIDEBAR ADMIN =================
+# ======================================================
+# SIDEBAR ADMIN
+# ======================================================
 with st.sidebar:
     st.subheader("⚙️ Admin")
     if st.checkbox("Unlock Level Settings"):
@@ -107,14 +117,16 @@ with st.sidebar:
     if st.session_state.admin_unlocked and not st.session_state.started:
         st.session_state.level = st.selectbox(
             "Difficulty",
-            ["beginner", "intermediate", "advanced"],
-            index=["beginner", "intermediate", "advanced"].index(st.session_state.level)
+            ["beginner","intermediate","advanced"],
+            index=["beginner","intermediate","advanced"].index(st.session_state.level)
         )
 
     st.divider()
     st.info(f"Difficulty: **{st.session_state.level.upper()}**")
 
-# ================= QUESTION PREP =================
+# ======================================================
+# QUESTION PREP
+# ======================================================
 def prepare_questions(df):
     qlist = []
     for _, r in df.iterrows():
@@ -128,36 +140,34 @@ def prepare_questions(df):
     random.shuffle(qlist)
     return qlist
 
-# ================= SCREEN 1 =================
+# ======================================================
+# SCREEN 1 – START
+# ======================================================
 if not st.session_state.started:
     st.title("🏥 Medanta Staff Assessment")
 
     name = st.text_input("Full Name")
-    dob = st.date_input("Date of Birth", min_value=date(1960, 1, 1))
+    dob = st.date_input("Date of Birth", min_value=date(1960,1,1))
     qual = st.text_input("Qualification")
-    cat = st.selectbox("Staff Category", ["Nursing", "Non-Nursing"])
-    reg = st.text_input("Registration Number") if cat == "Nursing" else "N/A"
+    cat = st.selectbox("Staff Category", ["Nursing","Non-Nursing"])
+    reg = st.text_input("Registration Number") if cat=="Nursing" else "N/A"
     college = st.text_input("College Name")
     contact = st.text_input("Contact Number")
 
     if st.button("Start Assessment"):
-        if not (name and contact.isdigit() and len(contact) == 10):
+        if not (name and contact.isdigit() and len(contact)==10):
             st.warning("Please enter valid details")
             st.stop()
 
-        if not os.path.exists("questions.xlsx"):
-            st.error("questions.xlsx not found")
-            st.stop()
-
         df = pd.read_excel("questions.xlsx")
-        tech = df[df["level"].str.lower() == st.session_state.level].sample(TECH_Q_COUNT)
+        tech = df[df["level"].str.lower()==st.session_state.level].sample(TECH_Q_COUNT)
         behav = pd.DataFrame(random.sample(BEHAVIORAL_BANK, BEHAV_Q_COUNT))
         full = pd.concat([tech, behav])
 
         st.session_state.questions = prepare_questions(full)
         st.session_state.candidate_data = {
-            "name": name, "dob": str(dob), "qualification": qual,
-            "category": cat, "reg_no": reg, "college": college, "contact": contact
+            "name":name,"dob":str(dob),"qualification":qual,
+            "category":cat,"reg_no":reg,"college":college,"contact":contact
         }
 
         st.session_state.start_time = time.time()
@@ -165,7 +175,9 @@ if not st.session_state.started:
         st.session_state.started = True
         st.rerun()
 
-# ================= SCREEN 2 =================
+# ======================================================
+# SCREEN 2 – EXAM
+# ======================================================
 else:
     elapsed = time.time() - st.session_state.start_time
     remaining = max(0, GLOBAL_TEST_TIME - elapsed)
@@ -175,13 +187,10 @@ else:
         st.session_state.review_mode = True
         st.session_state.review_start = time.time()
 
-    # -------- REVIEW MODE --------
+    # ---------- REVIEW MODE ----------
     if st.session_state.review_mode:
         review_left = REVIEW_TIME_LIMIT - (time.time() - st.session_state.review_start)
-        if review_left <= 0:
-            st.warning("Review time expired. Submitting...")
-        else:
-            st.info(f"Review time left: {int(review_left)} sec")
+        st.info(f"Review time left: {max(0,int(review_left))} sec")
 
         cols = st.columns(5)
         for i in range(TOTAL_QUESTIONS):
@@ -194,52 +203,46 @@ else:
 
         if st.button("Final Submit") or review_left <= 0:
             correct = sum(
-                1 for i, q in enumerate(st.session_state.questions)
-                if st.session_state.answers.get(i) == q["correct"]
+                1 for i,q in enumerate(st.session_state.questions)
+                if st.session_state.answers.get(i)==q["correct"]
             )
-            score = round((correct / TOTAL_QUESTIONS) * 100, 2)
+            score = round((correct/TOTAL_QUESTIONS)*100,2)
 
-            requests.post(BRIDGE_URL, json={
+            payload = {
                 **st.session_state.candidate_data,
-                "score": score
-            })
+                "score_percent": score,
+                "submitted_at": time.strftime("%Y-%m-%d %H:%M:%S")
+            }
 
+            requests.post(BRIDGE_URL, json=payload, timeout=10)
             st.success(f"Assessment submitted. Score: {score}%")
             st.session_state.started = False
             st.stop()
 
-    # -------- QUESTION MODE --------
+    # ---------- QUESTION MODE ----------
     else:
         q = st.session_state.questions[st.session_state.q_index]
-
-        # Safe per-question timer
         q_elapsed = time.time() - st.session_state.question_start_time
+
         if (
             q_elapsed > st.session_state.per_q_time
             and st.session_state.q_index not in st.session_state.answers
         ):
             st.session_state.q_index += 1
             st.session_state.question_start_time = time.time()
-
             if st.session_state.q_index >= TOTAL_QUESTIONS:
                 st.session_state.review_mode = True
                 st.session_state.review_start = time.time()
             st.rerun()
 
-        st.subheader(f"Question {st.session_state.q_index + 1}")
+        st.subheader(f"Question {st.session_state.q_index+1}")
         st.write(q["question"])
-        st.caption(f"Time left for this question: {int(st.session_state.per_q_time - q_elapsed)} sec")
+        st.caption(f"Time left: {int(st.session_state.per_q_time - q_elapsed)} sec")
 
-        choice = st.radio(
-            "Select answer",
-            q["options"],
-            index=None,
-            key=f"q_{st.session_state.q_index}"
-        )
+        choice = st.radio("Select answer", q["options"], index=None)
 
         if choice:
-            time_taken = q_elapsed
-            if time_taken > 40:
+            if q_elapsed > 40:
                 st.session_state.fishy_counter += 1
             else:
                 st.session_state.fishy_counter = 0
@@ -256,5 +259,3 @@ else:
                 st.session_state.review_start = time.time()
 
             st.rerun()
-
-
