@@ -84,8 +84,8 @@ def prepare_questions(category, level="beginner"):
     behav_count = random.randint(BEHAV_MIN, BEHAV_MAX)
 
     tech_pool = tech_df[
-        (tech_df["staff_category"] == category) &
-        (tech_df["level"].str.lower() == level.lower())
+    (tech_df["category"] == category) &
+    (tech_df["level"].str.lower() == level.lower())
     ]
 
     tech_q = tech_pool.sample(tech_count)
@@ -218,3 +218,4 @@ else:
 
     requests.post(BRIDGE_URL, json=payload, timeout=10)
     st.stop()
+
