@@ -36,9 +36,7 @@ def normalize_columns(df):
 st.markdown("""
 <style>
 body { background:#F6F8FB; }
-
 .center { text-align:center; }
-
 .card {
     background:white;
     padding:22px;
@@ -46,7 +44,6 @@ body { background:#F6F8FB; }
     box-shadow:0 10px 24px rgba(0,0,0,0.06);
     margin-bottom:20px;
 }
-
 .integrity {
     background:#FFF4F4;
     border-left:6px solid #B30000;
@@ -56,7 +53,6 @@ body { background:#F6F8FB; }
     color:#5A1A1A;
     margin-bottom:18px;
 }
-
 .timer {
     background:#0B5394;
     color:white;
@@ -66,26 +62,22 @@ body { background:#F6F8FB; }
     font-weight:600;
     margin-bottom:16px;
 }
-
 .slogan {
     color:#B30000;
     font-size:22px;
     font-weight:700;
     margin-top:6px;
 }
-
 .subtle {
     color:#666;
     font-size:13px;
 }
-
 .tip {
     background:#E8F4FF;
     padding:14px;
     border-radius:12px;
     margin-top:14px;
 }
-
 @media(max-width:600px){
     .card { padding:16px; }
 }
@@ -118,16 +110,29 @@ with st.sidebar:
                 if key == ADMIN_KEY:
                     st.session_state.admin = True
                     st.success("Admin unlocked")
+                    st.rerun()
                 else:
                     st.error("Invalid key")
         else:
-            st.session_state.level = st.selectbox(
+            # Dropdown to change assessment level
+            new_level = st.selectbox(
                 "Assessment Level",
-                ["Beginner", "Intermediate", "Advanced"]
+                ["Beginner", "Intermediate", "Advanced"],
+                index=["Beginner", "Intermediate", "Advanced"].index(st.session_state.level)
             )
+            st.session_state.level = new_level
+            st.info(f"Current Mode: {st.session_state.level}")
+            
+            if st.button("Lock Admin"):
+                st.session_state.admin = False
+                st.rerun()
 
 # ================= HEADER =================
-st.image("MHPL logo 2.png", width=140)
+# Note: Ensure "MHPL logo 2.png" is in the same directory
+try:
+    st.image("MHPL logo 2.png", width=140)
+except:
+    pass
 
 st.markdown("<h2 class='center'>Medanta Staff Assessment</h2>", unsafe_allow_html=True)
 
@@ -135,14 +140,15 @@ st.markdown("""
 <div class="integrity">
 <b>Integrity Declaration</b><br>
 This assessment is the exclusive intellectual property of
-<b>Medanta Hospital, Lucknow</b>.  
+<b>Medanta Hospital, Lucknow</b>.<br>
 Sharing, copying, recording, or external assistance is strictly prohibited.
 </div>
 """, unsafe_allow_html=True)
 
-st.markdown("""
+st.markdown(f"""
 <div class="center slogan">हर एक जान अनमोल</div>
 <div class="center subtle">Compassion • Care • Clinical Excellence</div>
+<div class="center" style="color:#0B5394; font-weight:bold; margin-top:5px;">Level: {st.session_state.level}</div>
 """, unsafe_allow_html=True)
 
 # ================= STAFF INFO =================
@@ -162,36 +168,39 @@ if not st.session_state.started:
     if st.button("Start Assessment"):
         if not name or not mobile:
             st.warning("Name and Mobile Number are mandatory.")
-            st.stop()
+        else:
+            st.session_state.candidate = {
+                "name": name,
+                "dob": str(dob),
+                "qualification": qualification,
+                "category": category,
+                "registration_number": reg_no,
+                "mobile": mobile,
+                "college": college
+            }
 
-        st.session_state.candidate = {
-            "name": name,
-            "dob": str(dob),
-            "qualification": qualification,
-            "category": category,
-            "registration_number": reg_no,
-            "mobile": mobile,
-            "college": college
-        }
+            try:
+                tech = normalize_columns(pd.read_excel("questions.xlsx"))
+                beh = normalize_columns(pd.read_excel("Behavioural_Questions_100_with_Competency.xlsx"))
 
-        tech = normalize_columns(pd.read_excel("questions.xlsx"))
-        beh = normalize_columns(pd.read_excel("Behavioural_Questions_100_with_Competency.xlsx"))
+                tech_count = random.randint(17, 20)
+                beh_count = TOTAL_QUESTIONS - tech_count
 
-        tech_count = random.randint(17, 20)
-        beh_count = TOTAL_QUESTIONS - tech_count
+                # Filter by the level set in Admin
+                tech_q = tech[tech["level"].str.lower() == st.session_state.level.lower()].sample(tech_count)
+                beh_q = beh.sample(beh_count)
 
-        tech_q = tech[tech["level"].str.lower() == st.session_state.level.lower()].sample(tech_count)
-        beh_q = beh.sample(beh_count)
+                st.session_state.questions = (
+                    pd.concat([tech_q, beh_q])
+                    .sample(TOTAL_QUESTIONS)
+                    .to_dict("records")
+                )
 
-        st.session_state.questions = (
-            pd.concat([tech_q, beh_q])
-            .sample(TOTAL_QUESTIONS)
-            .to_dict("records")
-        )
-
-        st.session_state.start_time = time.time()
-        st.session_state.started = True
-        st.rerun()
+                st.session_state.start_time = time.time()
+                st.session_state.started = True
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error loading files: {e}")
 
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -209,7 +218,7 @@ elif not st.session_state.show_result:
     q = st.session_state.questions[st.session_state.idx]
 
     st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.markdown(f"**Question {st.session_state.idx+1}/{TOTAL_QUESTIONS}**  \n{q['question']}")
+    st.markdown(f"**Question {st.session_state.idx+1}/{TOTAL_QUESTIONS}** \n{q['question']}")
 
     choice = st.radio(
         "Choose one:",
@@ -258,6 +267,7 @@ else:
         <h3>Assessment Report</h3>
         <b>Score:</b> {correct}/{TOTAL_QUESTIONS}<br>
         <b>Result:</b> {result}<br>
+        <b>Level:</b> {st.session_state.level}<br>
         <b>Time Taken:</b> {mins}m {secs}s
         <div class="tip"><b>Professional Insight:</b><br>{tip}</div>
     </div>
@@ -268,13 +278,12 @@ else:
         "score": f"{correct}/{TOTAL_QUESTIONS}",
         "duration": f"{mins}m {secs}s",
         "result": result,
+        "level": st.session_state.level,
         **st.session_state.answers
     }
 
     try:
         requests.post(GOOGLE_SCRIPT_URL, json=payload, timeout=20)
+        st.success("Assessment submitted successfully.")
     except:
-        pass
-
-    st.success("Assessment submitted successfully.")
-
+        st.warning("Assessment finished, but failed to sync with server.")
