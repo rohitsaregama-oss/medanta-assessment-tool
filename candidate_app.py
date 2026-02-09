@@ -1,10 +1,13 @@
 import streamlit as st
 import pandas as pd
-import random, time, requests
+import random
+import time
+import requests
 from datetime import date
 
 # ================= CONFIG =================
 TOTAL_QUESTIONS = 25
+
 DEFAULT_Q_TIME = 60
 REDUCED_Q_TIME = 40
 SUSPICIOUS_THRESHOLD = 55
@@ -19,70 +22,67 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ================= STYLES =================
+# ================= DESIGN LANGUAGE =================
 st.markdown("""
 <style>
-body { background:#F6F8FB; }
+body {
+    background:#F6F8FB;
+}
 
-.center { text-align:center; }
-
-.hero {
-    background:linear-gradient(135deg,#1C1F26,#3A3F4B);
-    color:white;
-    padding:28px;
-    border-radius:18px;
-    margin-bottom:24px;
+.center {
+    text-align:center;
 }
 
 .card {
-    background:white;
+    background:#FFFFFF;
     padding:22px;
-    border-radius:16px;
-    box-shadow:0 10px 24px rgba(0,0,0,0.06);
-    margin-bottom:20px;
+    border-radius:18px;
+    box-shadow:0 12px 28px rgba(0,0,0,0.08);
+    margin-bottom:22px;
 }
 
 .integrity {
     background:#FFF4F4;
     border-left:6px solid #B30000;
-    padding:14px;
+    padding:14px 16px;
     border-radius:12px;
     font-size:14px;
     color:#5A1A1A;
-    margin-bottom:20px;
-}
-
-.timer {
-    background:#0B5394;
-    color:white;
-    padding:12px;
-    border-radius:12px;
-    text-align:center;
-    font-weight:600;
-    margin-bottom:16px;
+    margin:18px 0 22px 0;
 }
 
 .slogan {
-    color:#B30000;
     font-size:22px;
     font-weight:700;
+    color:#B30000;
     margin-top:6px;
 }
 
 .subtle {
-    color:#666;
     font-size:13px;
+    color:#666;
+    margin-bottom:22px;
+}
+
+.timer {
+    background:linear-gradient(135deg,#1a1a1a,#e11d48);
+    color:white;
+    padding:12px;
+    border-radius:14px;
+    text-align:center;
+    font-weight:600;
+    margin-bottom:18px;
 }
 
 .tip {
     background:#E8F4FF;
     padding:14px;
     border-radius:12px;
-    margin-top:14px;
+    margin-top:16px;
+    font-size:14px;
 }
 
 @media(max-width:600px){
-    .hero { padding:20px; }
     .card { padding:16px; }
 }
 </style>
@@ -113,13 +113,13 @@ with st.sidebar:
             if st.button("Unlock"):
                 if k == ADMIN_KEY:
                     st.session_state.admin = True
-                    st.success("Unlocked")
+                    st.success("Admin Unlocked")
                 else:
                     st.error("Invalid Key")
         else:
             st.session_state.level = st.selectbox(
                 "Assessment Level",
-                ["Beginner","Intermediate","Advanced"]
+                ["Beginner", "Intermediate", "Advanced"]
             )
 
 # ================= HEADER =================
@@ -131,8 +131,9 @@ st.markdown("""
 <div class="integrity">
 <b>Integrity Declaration</b><br>
 This assessment is the exclusive intellectual property of
-<b>Medanta Hospital, Lucknow</b>.  
-Sharing, copying, recording, or external assistance is strictly prohibited.
+<b>Medanta Hospital, Lucknow</b>.<br>
+Any form of copying, sharing, recording, or external assistance
+is strictly prohibited and may invite disciplinary action.
 </div>
 """, unsafe_allow_html=True)
 
@@ -157,7 +158,7 @@ if not st.session_state.started:
 
     if st.button("Start Assessment"):
         if not name or not mobile:
-            st.warning("Name and Mobile are mandatory")
+            st.warning("Full Name and Mobile Number are mandatory.")
             st.stop()
 
         st.session_state.candidate = {
@@ -173,14 +174,16 @@ if not st.session_state.started:
         tech = pd.read_excel("questions.xlsx")
         beh = pd.read_excel("Behavioural_Questions_100_with_Competency.xlsx")
 
-        t = random.randint(17,20)
+        t = random.randint(17, 20)
         b = TOTAL_QUESTIONS - t
 
-        tq = tech[tech["level"].str.lower()==st.session_state.level.lower()].sample(t)
+        tq = tech[tech["level"].str.lower() == st.session_state.level.lower()].sample(t)
         bq = beh.sample(b)
 
         st.session_state.questions = (
-            pd.concat([tq,bq]).sample(TOTAL_QUESTIONS).to_dict("records")
+            pd.concat([tq, bq])
+            .sample(TOTAL_QUESTIONS)
+            .to_dict("records")
         )
 
         st.session_state.start_time = time.time()
@@ -198,16 +201,28 @@ elif not st.session_state.result:
     q_elapsed = int(time.time() - st.session_state.q_start)
     q_remain = max(0, st.session_state.q_limit - q_elapsed)
 
-    st.markdown(f"<div class='timer'>⏱ Question Time: {q_remain}s</div>", unsafe_allow_html=True)
+    st.markdown(
+        f"<div class='timer'>⏱ Question Time Remaining: {q_remain}s</div>",
+        unsafe_allow_html=True
+    )
 
     q = st.session_state.questions[st.session_state.idx]
 
     st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.markdown(f"**Question {st.session_state.idx+1}/25**  \n{q['question']}")
+    st.markdown(
+        f"**Question {st.session_state.idx+1}/{TOTAL_QUESTIONS}**  \n{q['question']}"
+    )
+
+    options = [
+        q.get("Option A"),
+        q.get("Option B"),
+        q.get("Option C"),
+        q.get("Option D"),
+    ]
 
     choice = st.radio(
-        "Choose one:",
-        [q["option_a"],q["option_b"],q["option_c"],q["option_d"]],
+        "Select one option:",
+        options,
         key=f"q{st.session_state.idx}"
     )
 
@@ -234,31 +249,32 @@ elif not st.session_state.result:
 # ================= RESULT =================
 else:
     correct = sum(
-        1 for i,q in enumerate(st.session_state.questions)
-        if st.session_state.answers.get(f"Q{i+1}") == q["correct_answer"]
+        1 for i, q in enumerate(st.session_state.questions)
+        if st.session_state.answers.get(f"Q{i+1}") == q.get("Correct Answer")
     )
 
-    mins,secs = divmod(int(time.time()-st.session_state.start_time),60)
-    result = "CLEARED" if correct>=15 else "NOT CLEARED"
+    mins, secs = divmod(int(time.time() - st.session_state.start_time), 60)
+    result = "CLEARED" if correct >= 15 else "NOT CLEARED"
 
     tip = (
-        "You show strong potential. Keep reinforcing safe clinical practices."
-        if correct>=15 else
-        "Focus on protocols and calm decision-making. Improvement is absolutely achievable."
+        "You demonstrate strong professional judgment. Continue reinforcing safe clinical practices."
+        if correct >= 15 else
+        "Focus on protocols, calm decision-making, and situational awareness. Improvement is well within reach."
     )
 
     st.markdown(f"""
     <div class="card">
-    <h3>Assessment Report</h3>
-    <b>Score:</b> {correct}/25<br>
-    <b>Result:</b> {result}<br>
-    <b>Time Taken:</b> {mins}m {secs}s
-    <div class="tip"><b>Professional Insight:</b><br>{tip}</div>
+        <h3>Assessment Report</h3>
+        <b>Score:</b> {correct}/{TOTAL_QUESTIONS}<br>
+        <b>Result:</b> {result}<br>
+        <b>Time Taken:</b> {mins}m {secs}s
+        <div class="tip"><b>Professional Insight:</b><br>{tip}</div>
     </div>
     """, unsafe_allow_html=True)
 
-    payload = {**st.session_state.candidate,
-        "score": f"{correct}/25",
+    payload = {
+        **st.session_state.candidate,
+        "score": f"{correct}/{TOTAL_QUESTIONS}",
         "duration": f"{mins}m {secs}s",
         "result": result,
         **st.session_state.answers
