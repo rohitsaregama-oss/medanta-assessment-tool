@@ -6,7 +6,7 @@ import random
 from datetime import date
 
 # ================== CONFIG ==================
-BRIDGE_URL = "https://script.google.com/macros/s/AKfycbwJgM_mAnqnTaoOD-uuiJFovFXNGzgbssbtRiSWE61q5PS1fBLutOYPNOHUctGjLjaB/exec"
+BRIDGE_URL = "https://script.google.com/macros/s/AKfycbxF7Cp_rN_Zge3RYeDbYzMBEhNGUWDTlAg0M9UajBkFeThOcfGV36Kg98fy6488K-Q/exec"
 
 TECH_MIN, TECH_MAX = 17, 20
 BEHAV_MIN, BEHAV_MAX = 5, 8
@@ -218,4 +218,5 @@ else:
 
     requests.post(BRIDGE_URL, json=payload, timeout=10)
     st.stop()
+
 
