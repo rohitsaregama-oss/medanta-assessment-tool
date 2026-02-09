@@ -13,7 +13,7 @@ except:
     ADMIN_MASTER_KEY = None
 
 # ================= CONFIG =================
-BRIDGE_URL = "https://script.google.com/macros/s/AKfycbw2Phahbp2SqwL_3UsQBiMIZDpWe-gXY1gS3jjvaDBCpOMhxSLWzjhhB-V57AIFsX3g/exec"
+BRIDGE_URL = "https://script.google.com/macros/s/AKfycbxxBVwY1Lft6M-4iBGsLVCUvPUKPEhrK6Yvra8Ojs6rSQvgngfkYp89yskyfUZ1MFRp/exec"
 
 TOTAL_QUESTIONS = 25
 TECH_Q_COUNT = 18
@@ -256,4 +256,5 @@ else:
                 st.session_state.review_start = time.time()
 
             st.rerun()
+
 
