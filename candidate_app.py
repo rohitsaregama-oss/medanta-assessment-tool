@@ -22,71 +22,106 @@ st.set_page_config(page_title="Medanta Staff Assessment", layout="centered")
 # ================= CSS (DESKTOP + MOBILE) =================
 st.markdown("""
 <style>
-.stApp { background:#F7F9FC; }
-.block-container { max-width:900px; padding:1rem; }
 
+/* ---------- PAGE ---------- */
+.stApp {
+    background: #F7F9FC;
+}
+
+.block-container {
+    max-width: 900px;
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+/* ---------- TITLES ---------- */
+.main-title {
+    font-size: 30px;
+    font-weight: 800;
+    color: #0B5394;
+    margin-bottom: 16px;
+}
+
+/* ---------- LOGO ---------- */
+.logo-box {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+
+/* ---------- HAR EK JAAN ANMOL ---------- */
+.anmol-banner {
+    background: linear-gradient(90deg, #B30000, #6E6E6E);
+    padding: 18px;
+    border-radius: 16px;
+    text-align: center;
+    margin-bottom: 14px;
+}
+
+.anmol-text {
+    color: white;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.anmol-sub {
+    color: #F2F2F2;
+    font-size: 13px;
+    margin-top: 6px;
+}
+
+/* ---------- INTEGRITY ---------- */
+.integrity-banner {
+    background: #FFF4F4;
+    border-left: 6px solid #B30000;
+    padding: 14px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    font-size: 14px;
+    color: #5A1A1A;
+}
+
+/* ---------- CARDS ---------- */
 .card {
-    background:#FFFFFF;
-    padding:22px;
-    border-radius:18px;
-    box-shadow:0 10px 25px rgba(0,0,0,0.08);
-    margin-bottom:22px;
+    background: white;
+    padding: 22px;
+    border-radius: 18px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    margin-bottom: 22px;
 }
 
-.section-title {
-    font-size:22px;
-    font-weight:700;
-    color:#0B5394;
-    margin-bottom:16px;
-}
-
-
-.timer-box {
-    position:fixed;
-    top:110px;
-    right:20px;
-    background:#FFFFFF;
-    padding:14px 18px;
-    border-radius:14px;
-    box-shadow:0 6px 18px rgba(0,0,0,0.15);
-    border-left:6px solid #0B5394;
-    z-index:9999;
-    font-size:14px;
-}
-
-.timer-warning { color:#B30000; font-weight:600; }
-
-.tip-box {
-    background:#EDF4EE;
-    border-left:6px solid #4F772D;
-    padding:14px;
-    border-radius:12px;
-    font-size:14px;
-    color:#2F4F2F;
-}
-
+/* ---------- BUTTON ---------- */
 .stButton > button {
-    background:linear-gradient(90deg,#F28C28,#E6761C);
-    color:white;
-    border-radius:14px;
-    padding:12px 22px;
-    font-weight:600;
-    border:none;
-    width:100%;
+    background: linear-gradient(90deg, #F28C28, #E6761C);
+    color: white;
+    border-radius: 14px;
+    padding: 12px 20px;
+    font-weight: 600;
+    width: 100%;
 }
 
-@media (max-width:768px) {
-    .timer-box {
-        bottom:16px;
-        top:auto;
-        left:16px;
-        right:16px;
-        text-align:center;
+/* ---------- MOBILE ---------- */
+@media (max-width: 768px) {
+
+    .main-title {
+        font-size: 24px;
+        text-align: center;
     }
-    .section-title { text-align:center; font-size:20px; }
+
+    .anmol-text {
+        font-size: 20px;
+    }
+
+    .block-container {
+        padding-left: 0.8rem;
+        padding-right: 0.8rem;
+    }
 }
+
 </style>
 """, unsafe_allow_html=True)
+
 
 # ================= SESSION STATE =================
 if "started" not in st.session_state:
@@ -305,4 +340,5 @@ else:
         pass
 
     st.success("Assessment submitted successfully.")
+
 
