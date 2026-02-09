@@ -7,7 +7,6 @@ from datetime import date
 
 # ================= CONFIG =================
 TOTAL_QUESTIONS = 25
-
 DEFAULT_Q_TIME = 60
 REDUCED_Q_TIME = 40
 SUSPICIOUS_THRESHOLD = 55
@@ -22,64 +21,69 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ================= DESIGN LANGUAGE =================
+# ================= HELPERS =================
+def normalize_columns(df):
+    df.columns = (
+        df.columns
+        .astype(str)
+        .str.strip()
+        .str.lower()
+        .str.replace(" ", "_")
+    )
+    return df
+
+# ================= STYLES =================
 st.markdown("""
 <style>
-body {
-    background:#F6F8FB;
-}
+body { background:#F6F8FB; }
 
-.center {
-    text-align:center;
-}
+.center { text-align:center; }
 
 .card {
-    background:#FFFFFF;
+    background:white;
     padding:22px;
-    border-radius:18px;
-    box-shadow:0 12px 28px rgba(0,0,0,0.08);
-    margin-bottom:22px;
+    border-radius:16px;
+    box-shadow:0 10px 24px rgba(0,0,0,0.06);
+    margin-bottom:20px;
 }
 
 .integrity {
     background:#FFF4F4;
     border-left:6px solid #B30000;
-    padding:14px 16px;
+    padding:14px;
     border-radius:12px;
     font-size:14px;
     color:#5A1A1A;
-    margin:18px 0 22px 0;
+    margin-bottom:18px;
+}
+
+.timer {
+    background:#0B5394;
+    color:white;
+    padding:12px;
+    border-radius:12px;
+    text-align:center;
+    font-weight:600;
+    margin-bottom:16px;
 }
 
 .slogan {
+    color:#B30000;
     font-size:22px;
     font-weight:700;
-    color:#B30000;
     margin-top:6px;
 }
 
 .subtle {
-    font-size:13px;
     color:#666;
-    margin-bottom:22px;
-}
-
-.timer {
-    background:linear-gradient(135deg,#1a1a1a,#e11d48);
-    color:white;
-    padding:12px;
-    border-radius:14px;
-    text-align:center;
-    font-weight:600;
-    margin-bottom:18px;
+    font-size:13px;
 }
 
 .tip {
     background:#E8F4FF;
     padding:14px;
     border-radius:12px;
-    margin-top:16px;
-    font-size:14px;
+    margin-top:14px;
 }
 
 @media(max-width:600px){
@@ -99,7 +103,7 @@ if "started" not in st.session_state:
         "q_start": None,
         "q_limit": DEFAULT_Q_TIME,
         "slow": 0,
-        "result": False,
+        "show_result": False,
         "candidate": {},
         "admin": False,
         "level": "Beginner"
@@ -109,13 +113,13 @@ if "started" not in st.session_state:
 with st.sidebar:
     if st.checkbox("⚙️"):
         if not st.session_state.admin:
-            k = st.text_input("Admin Key", type="password")
+            key = st.text_input("Admin Key", type="password")
             if st.button("Unlock"):
-                if k == ADMIN_KEY:
+                if key == ADMIN_KEY:
                     st.session_state.admin = True
-                    st.success("Admin Unlocked")
+                    st.success("Admin unlocked")
                 else:
-                    st.error("Invalid Key")
+                    st.error("Invalid key")
         else:
             st.session_state.level = st.selectbox(
                 "Assessment Level",
@@ -131,9 +135,8 @@ st.markdown("""
 <div class="integrity">
 <b>Integrity Declaration</b><br>
 This assessment is the exclusive intellectual property of
-<b>Medanta Hospital, Lucknow</b>.<br>
-Any form of copying, sharing, recording, or external assistance
-is strictly prohibited and may invite disciplinary action.
+<b>Medanta Hospital, Lucknow</b>.  
+Sharing, copying, recording, or external assistance is strictly prohibited.
 </div>
 """, unsafe_allow_html=True)
 
@@ -158,7 +161,7 @@ if not st.session_state.started:
 
     if st.button("Start Assessment"):
         if not name or not mobile:
-            st.warning("Full Name and Mobile Number are mandatory.")
+            st.warning("Name and Mobile Number are mandatory.")
             st.stop()
 
         st.session_state.candidate = {
@@ -171,17 +174,17 @@ if not st.session_state.started:
             "college": college
         }
 
-        tech = pd.read_excel("questions.xlsx")
-        beh = pd.read_excel("Behavioural_Questions_100_with_Competency.xlsx")
+        tech = normalize_columns(pd.read_excel("questions.xlsx"))
+        beh = normalize_columns(pd.read_excel("Behavioural_Questions_100_with_Competency.xlsx"))
 
-        t = random.randint(17, 20)
-        b = TOTAL_QUESTIONS - t
+        tech_count = random.randint(17, 20)
+        beh_count = TOTAL_QUESTIONS - tech_count
 
-        tq = tech[tech["level"].str.lower() == st.session_state.level.lower()].sample(t)
-        bq = beh.sample(b)
+        tech_q = tech[tech["level"].str.lower() == st.session_state.level.lower()].sample(tech_count)
+        beh_q = beh.sample(beh_count)
 
         st.session_state.questions = (
-            pd.concat([tq, bq])
+            pd.concat([tech_q, beh_q])
             .sample(TOTAL_QUESTIONS)
             .to_dict("records")
         )
@@ -193,36 +196,24 @@ if not st.session_state.started:
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ================= EXAM =================
-elif not st.session_state.result:
+elif not st.session_state.show_result:
 
     if st.session_state.q_start is None:
         st.session_state.q_start = time.time()
 
     q_elapsed = int(time.time() - st.session_state.q_start)
-    q_remain = max(0, st.session_state.q_limit - q_elapsed)
+    q_remaining = max(0, st.session_state.q_limit - q_elapsed)
 
-    st.markdown(
-        f"<div class='timer'>⏱ Question Time Remaining: {q_remain}s</div>",
-        unsafe_allow_html=True
-    )
+    st.markdown(f"<div class='timer'>⏱ Question Time: {q_remaining}s</div>", unsafe_allow_html=True)
 
     q = st.session_state.questions[st.session_state.idx]
 
     st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.markdown(
-        f"**Question {st.session_state.idx+1}/{TOTAL_QUESTIONS}**  \n{q['question']}"
-    )
-
-    options = [
-        q.get("Option A"),
-        q.get("Option B"),
-        q.get("Option C"),
-        q.get("Option D"),
-    ]
+    st.markdown(f"**Question {st.session_state.idx+1}/{TOTAL_QUESTIONS}**  \n{q['question']}")
 
     choice = st.radio(
-        "Select one option:",
-        options,
+        "Choose one:",
+        [q["option_a"], q["option_b"], q["option_c"], q["option_d"]],
         key=f"q{st.session_state.idx}"
     )
 
@@ -240,7 +231,7 @@ elif not st.session_state.result:
         st.session_state.q_start = None
 
         if st.session_state.idx >= TOTAL_QUESTIONS:
-            st.session_state.result = True
+            st.session_state.show_result = True
 
         st.rerun()
 
@@ -250,16 +241,16 @@ elif not st.session_state.result:
 else:
     correct = sum(
         1 for i, q in enumerate(st.session_state.questions)
-        if st.session_state.answers.get(f"Q{i+1}") == q.get("Correct Answer")
+        if st.session_state.answers.get(f"Q{i+1}") == q["correct_answer"]
     )
 
     mins, secs = divmod(int(time.time() - st.session_state.start_time), 60)
     result = "CLEARED" if correct >= 15 else "NOT CLEARED"
 
     tip = (
-        "You demonstrate strong professional judgment. Continue reinforcing safe clinical practices."
+        "You demonstrate strong professional potential. Continue reinforcing best practices."
         if correct >= 15 else
-        "Focus on protocols, calm decision-making, and situational awareness. Improvement is well within reach."
+        "Focus on core protocols and calm decision-making. Improvement is absolutely achievable."
     )
 
     st.markdown(f"""
