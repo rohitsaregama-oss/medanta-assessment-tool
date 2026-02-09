@@ -7,10 +7,10 @@ from datetime import date
 TOTAL_QUESTIONS = 25
 TOTAL_EXAM_TIME = 25 * 60  # 25 Minutes Total
 DEFAULT_Q_TIME = 60        # 60 Seconds per Question
-PASS_MARK = 15             # 60% of 25
+PASS_MARK = 15             # 60% Passing
 
 # YOUR NEW BRIDGE KEY URL
-GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzepAmuGns-HWBwagxxUjnHiew_UJjBw4KpC1iLzFchHWStEEIgnYAfCwiqNJxw5odJ/exec"
+GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyq2Sa420wtw9GuzrEXSM_t6syId3SxNIOOldH0M8fqnLYFj2YqPKwoT8P2lwaqwpGm/exec"
 
 st.set_page_config(page_title="Medanta Assessment", layout="centered", initial_sidebar_state="collapsed")
 
@@ -81,7 +81,7 @@ if not st.session_state.started:
 
     if st.button("Start Assessment"):
         if not name or not mobile or reg_auth == "Choose an option...":
-            st.error("⚠️ Please fill Candidate Name, Mobile Number, and Registration Authority.")
+            st.error("⚠️ Name, Mobile, and Authority are required.")
         else:
             try:
                 tech = pd.read_excel("questions.xlsx")
@@ -102,12 +102,10 @@ if not st.session_state.started:
 
 # ================= EXAM INTERFACE (TIMERS) =================
 elif not st.session_state.show_result:
-    total_elapsed = time.time() - st.session_state.start_time
-    total_remain = max(0, TOTAL_EXAM_TIME - total_elapsed)
+    total_remain = max(0, TOTAL_EXAM_TIME - (time.time() - st.session_state.start_time))
     
     if st.session_state.q_start is None: st.session_state.q_start = time.time()
-    q_elapsed = time.time() - st.session_state.q_start
-    q_remain = max(0, DEFAULT_Q_TIME - q_elapsed)
+    q_remain = max(0, DEFAULT_Q_TIME - (time.time() - st.session_state.q_start))
 
     c1, c2 = st.columns(2)
     with c1: st.markdown(f"<div class='timer-box'>Total Exam: {int(total_remain//60)}m {int(total_remain%60)}s</div>", unsafe_allow_html=True)
@@ -120,9 +118,8 @@ elif not st.session_state.show_result:
     q = st.session_state.questions[st.session_state.idx]
     st.markdown(f"<div class='card'><b>Question {st.session_state.idx+1} of 25</b><br><br>{q['question']}</div>", unsafe_allow_html=True)
     
-    # Attempting Tips
     if st.session_state.idx < 3:
-        st.info("💡 Clinical Tip: Always prioritize patient safety and hospital protocols.")
+        st.info("💡 Clinical Tip: Read the patient scenario thoroughly before selecting your answer.")
 
     choice = st.radio("Select Option:", [q["option_a"], q["option_b"], q["option_c"], q["option_d"]], key=f"q{st.session_state.idx}")
 
@@ -130,8 +127,7 @@ elif not st.session_state.show_result:
         st.session_state.answers[f"Q{st.session_state.idx+1}"] = choice
         st.session_state.idx += 1
         st.session_state.q_start = None
-        if st.session_state.idx >= 25: 
-            st.session_state.show_result = True
+        if st.session_state.idx >= 25: st.session_state.show_result = True
         st.rerun()
 
 # ================= RESULT & GOOGLE SYNC =================
@@ -150,25 +146,23 @@ else:
     duration_str = f"{duration_secs//60}m {duration_secs%60}s"
     result_str = "PASSED" if correct >= PASS_MARK else "FAILED"
     
-    # Column J, K, L Mapping
     payload.update({"score": f"{correct}/25", "duration": duration_str, "result": result_str})
 
-    st.markdown(f"<div class='card' style='text-align:center;'><h2>Assessment Result: {result_status if 'result_status' in locals() else result_str}</h2><h1 style='color:#B30000;'>{correct}/25</h1></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='card' style='text-align:center;'><h2>Assessment Result: {result_str}</h2><h1 style='color:#B30000;'>{correct}/25</h1></div>", unsafe_allow_html=True)
     
-    # Final Result Tip
     if correct >= PASS_MARK:
-        st.success("🎉 Professional Tip: Excellent work! Your clinical knowledge aligns with Medanta's excellence standards.")
+        st.success("🎉 Excellent! Your clinical competency meets Medanta's high standards.")
     else:
-        st.warning("📋 Professional Tip: We suggest reviewing basic clinical protocols and patient care standards.")
+        st.warning("📋 Review Medanta's clinical safety protocols to improve your clinical outcomes.")
 
     if not st.session_state.submitted:
         try:
             r = requests.post(GOOGLE_SCRIPT_URL, json=payload, timeout=20)
             if r.status_code == 200:
                 st.session_state.submitted = True
-                st.success("✓ Assessment data securely synced with Medanta Registry.")
+                st.success("✓ Result Synced.")
         except:
-            st.error("⚠️ Sync Error. Please capture a screenshot of this result.")
+            st.error("⚠️ Sync Error. Please screenshot this page.")
 
     if st.button("Finish & Logout"):
         st.session_state.clear()
