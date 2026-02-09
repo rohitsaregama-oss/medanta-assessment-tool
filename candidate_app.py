@@ -5,14 +5,20 @@ from datetime import date
 
 # ================= CONFIG =================
 TOTAL_QUESTIONS = 25
-TOTAL_EXAM_TIME = 25 * 60  # 25 Minutes Total
-DEFAULT_Q_TIME = 60        # 60 Seconds per Question
-PASS_MARK = 15             # 60% Passing
+TOTAL_EXAM_TIME = 25 * 60 
+DEFAULT_Q_TIME = 60       
+PASS_MARK = 15            
 
-# YOUR NEW BRIDGE KEY URL
-GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyq2Sa420wtw9GuzrEXSM_t6syId3SxNIOOldH0M8fqnLYFj2YqPKwoT8P2lwaqwpGm/exec"
+# THE BRIDGE URL
+GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzepAmuGns-HWBwagxxUjnHiew_UJjBw4KpC1iLzFchHWStEEIgnYAfCwiqNJxw5odJ/exec"
 
 st.set_page_config(page_title="Medanta Assessment", layout="centered", initial_sidebar_state="collapsed")
+
+# ================= HELPERS =================
+def fix_columns(df):
+    """Normalizes Excel headers to prevent KeyError"""
+    df.columns = df.columns.astype(str).str.strip().str.lower().str.replace(" ", "_")
+    return df
 
 # ================= SESSION STATE =================
 if "started" not in st.session_state:
@@ -37,7 +43,7 @@ st.markdown("""
 try: 
     st.image("MHPL logo 2.png", width=250)
 except: 
-    st.title("🏥 Medanta Hospital")
+    pass
 
 st.markdown("""
 <div class="integrity">
@@ -56,38 +62,34 @@ if not st.session_state.started:
     col1, col2 = st.columns(2)
     with col1:
         name = st.text_input("Candidate Name *")
-        dob = st.date_input("Date of Birth", min_value=date(1960,1,1), max_value=date.today())
+        dob = st.date_input("Date of Birth", min_value=date(1960,1,1))
         qualification = st.text_input("Qualification")
         category = st.selectbox("Category", ["Nursing", "Non-Nursing", "Other"])
     with col2:
         reg_no = st.text_input("Registration Number")
-        reg_auth = st.selectbox("Registration Authority *", [
-            "Choose an option...", "Andhra Pradesh Nurses & Midwives Council", "Arunachal Pradesh Nursing Council",
-            "Assam Nurses' Midwives' & Health Visitors' Council", "Bihar Nurses Registration Council",
-            "Chhattisgarh Nursing Council", "Delhi Nursing Council", "Goa Nursing Council",
-            "Gujarat Nursing Council", "Haryana Nurses & Nurse-Midwives Council",
-            "Himachal Pradesh Nurses Registration Council", "Indian Nursing Council (NRTS)",
-            "Jharkhand Nurses Registration Council", "Karnataka State Nursing Council",
-            "Kerala Nurses and Midwives Council", "Madhya Pradesh Nurses Registration Council",
-            "Maharashtra Nursing Council", "Manipur Nursing Council", "Meghalaya Nursing Council",
-            "Mizoram Nursing Council", "Nagaland Nursing Council", "Odisha Nurses & Midwives Council",
-            "Punjab Nurses Registration Council", "Rajasthan Nursing Council", "Sikkim Nursing Council",
-            "Tamil Nadu Nurses & Midwives Council", "Telangana State Nursing Council",
-            "Tripura Nursing Council", "Uttar Pradesh Nurses & Midwives Council",
-            "Uttarakhand Nurses & Midwives Council", "West Bengal Nursing Council", "Other"
+        reg_auth = st.selectbox("Select the Nursing Registration Authority *", [
+            "Choose an option...", "Andhra Pradesh Nurses & Midwives Council", "Bihar Nurses Registration Council",
+            "Delhi Nursing Council", "Gujarat Nursing Council", "Haryana Nurses & Nurse-Midwives Council",
+            "Karnataka State Nursing Council", "Kerala Nurses and Midwives Council", 
+            "Maharashtra Nursing Council", "Punjab Nurses Registration Council", 
+            "Rajasthan Nursing Council", "Tamil Nadu Nurses & Midwives Council",
+            "Uttar Pradesh Nurses & Midwives Council", "West Bengal Nursing Council", "Other"
         ])
         mobile = st.text_input("Mobile Number *")
         college = st.text_input("College")
 
     if st.button("Start Assessment"):
         if not name or not mobile or reg_auth == "Choose an option...":
-            st.error("⚠️ Name, Mobile, and Authority are required.")
+            st.error("⚠️ Candidate Name, Mobile Number, and Registration Authority are required.")
         else:
             try:
-                tech = pd.read_excel("questions.xlsx")
-                beh = pd.read_excel("Behavioural_Questions_100_with_Competency.xlsx")
+                # Load and fix Excel headers
+                tech = fix_columns(pd.read_excel("questions.xlsx"))
+                beh = fix_columns(pd.read_excel("Behavioural_Questions_100_with_Competency.xlsx"))
+                
                 t_q = tech.sample(20)
                 b_q = beh.sample(5)
+                
                 st.session_state.questions = pd.concat([t_q, b_q]).sample(25).to_dict("records")
                 st.session_state.candidate = {
                     "name": name, "dob": str(dob), "qualification": qualification, "category": category,
@@ -97,15 +99,17 @@ if not st.session_state.started:
                 st.session_state.started = True
                 st.rerun()
             except Exception as e:
-                st.error(f"Excel Error: {e}")
+                st.error(f"Excel Error: {e}.")
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ================= EXAM INTERFACE (TIMERS) =================
 elif not st.session_state.show_result:
-    total_remain = max(0, TOTAL_EXAM_TIME - (time.time() - st.session_state.start_time))
+    total_elapsed = time.time() - st.session_state.start_time
+    total_remain = max(0, TOTAL_EXAM_TIME - total_elapsed)
     
     if st.session_state.q_start is None: st.session_state.q_start = time.time()
-    q_remain = max(0, DEFAULT_Q_TIME - (time.time() - st.session_state.q_start))
+    q_elapsed = time.time() - st.session_state.q_start
+    q_remain = max(0, DEFAULT_Q_TIME - q_elapsed)
 
     c1, c2 = st.columns(2)
     with c1: st.markdown(f"<div class='timer-box'>Total Exam: {int(total_remain//60)}m {int(total_remain%60)}s</div>", unsafe_allow_html=True)
@@ -118,8 +122,7 @@ elif not st.session_state.show_result:
     q = st.session_state.questions[st.session_state.idx]
     st.markdown(f"<div class='card'><b>Question {st.session_state.idx+1} of 25</b><br><br>{q['question']}</div>", unsafe_allow_html=True)
     
-    if st.session_state.idx < 3:
-        st.info("💡 Clinical Tip: Read the patient scenario thoroughly before selecting your answer.")
+    st.info("💡 Clinical Tip: Read the patient scenario thoroughly before selecting your answer.")
 
     choice = st.radio("Select Option:", [q["option_a"], q["option_b"], q["option_c"], q["option_d"]], key=f"q{st.session_state.idx}")
 
@@ -127,7 +130,8 @@ elif not st.session_state.show_result:
         st.session_state.answers[f"Q{st.session_state.idx+1}"] = choice
         st.session_state.idx += 1
         st.session_state.q_start = None
-        if st.session_state.idx >= 25: st.session_state.show_result = True
+        if st.session_state.idx >= 25: 
+            st.session_state.show_result = True
         st.rerun()
 
 # ================= RESULT & GOOGLE SYNC =================
@@ -144,16 +148,17 @@ else:
 
     duration_secs = int(time.time() - st.session_state.start_time)
     duration_str = f"{duration_secs//60}m {duration_secs%60}s"
-    result_str = "PASSED" if correct >= PASS_MARK else "FAILED"
+    res = "PASSED" if correct >= PASS_MARK else "FAILED"
     
-    payload.update({"score": f"{correct}/25", "duration": duration_str, "result": result_str})
+    # Specific column J, K, L mapping
+    payload.update({"score": f"{correct}/25", "duration": duration_str, "result": res})
 
-    st.markdown(f"<div class='card' style='text-align:center;'><h2>Assessment Result: {result_str}</h2><h1 style='color:#B30000;'>{correct}/25</h1></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='card' style='text-align:center;'><h2>Result: {res}</h2><h1 style='color:#B30000;'>{correct}/25</h1></div>", unsafe_allow_html=True)
     
     if correct >= PASS_MARK:
-        st.success("🎉 Excellent! Your clinical competency meets Medanta's high standards.")
+        st.success("🎉 Excellent! Your clinical competency meets Medanta's standards.")
     else:
-        st.warning("📋 Review Medanta's clinical safety protocols to improve your clinical outcomes.")
+        st.warning("📋 Review Medanta's protocols to improve clinical outcomes.")
 
     if not st.session_state.submitted:
         try:
