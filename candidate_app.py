@@ -4,10 +4,9 @@ import requests
 import time
 import random
 from datetime import date
-import os
 
 # ======================================================
-# SAFE SECRET LOAD
+# SECRETS
 # ======================================================
 try:
     ADMIN_MASTER_KEY = st.secrets["ADMIN_MASTER_KEY"]
@@ -22,37 +21,36 @@ BRIDGE_URL = "https://script.google.com/macros/s/AKfycbyXHJpC7L82bb2EKDzQ1N4MK2a
 TOTAL_QUESTIONS = 25
 TECH_Q_COUNT = 18
 BEHAV_Q_COUNT = 7
-PASS_PERCENT = 60
 
 GLOBAL_TEST_TIME = 25 * 60
 DEFAULT_Q_TIME = 45
 REDUCED_Q_TIME = 25
-REVIEW_TIME_LIMIT = 120  # seconds
+REVIEW_TIME_LIMIT = 120
 
 st.set_page_config(page_title="Medanta Staff Assessment", layout="centered")
 
 # ======================================================
-# SESSION STATE INIT
+# SESSION STATE
 # ======================================================
 if "started" not in st.session_state:
     st.session_state.update({
         "started": False,
         "q_index": 0,
         "answers": {},
-        "candidate_data": {},
         "questions": [],
+        "candidate_data": {},
         "level": "beginner",
         "start_time": None,
         "question_start_time": None,
-        "fishy_counter": 0,
         "per_q_time": DEFAULT_Q_TIME,
+        "fishy_counter": 0,
         "review_mode": False,
         "review_start": None,
         "admin_unlocked": False
     })
 
 # ======================================================
-# 50 BEHAVIORAL QUESTIONS
+# 50 BEHAVIOURAL QUESTIONS
 # ======================================================
 BEHAVIORAL_BANK = [
     {"question":"How do you handle a patient who refuses treatment?","Option A":"Respect and document","Option B":"Explain risks and notify doctor","Option C":"Force treatment","Option D":"Ignore","Correct Answer":"Explain risks and notify doctor"},
@@ -128,17 +126,17 @@ with st.sidebar:
 # QUESTION PREP
 # ======================================================
 def prepare_questions(df):
-    qlist = []
+    questions = []
     for _, r in df.iterrows():
         opts = [r["Option A"], r["Option B"], r["Option C"], r["Option D"]]
         random.shuffle(opts)
-        qlist.append({
+        questions.append({
             "question": r["question"],
             "options": opts,
             "correct": r["Correct Answer"]
         })
-    random.shuffle(qlist)
-    return qlist
+    random.shuffle(questions)
+    return questions
 
 # ======================================================
 # SCREEN 1 – START
@@ -156,18 +154,23 @@ if not st.session_state.started:
 
     if st.button("Start Assessment"):
         if not (name and contact.isdigit() and len(contact)==10):
-            st.warning("Please enter valid details")
+            st.warning("Invalid details")
             st.stop()
 
         df = pd.read_excel("questions.xlsx")
         tech = df[df["level"].str.lower()==st.session_state.level].sample(TECH_Q_COUNT)
         behav = pd.DataFrame(random.sample(BEHAVIORAL_BANK, BEHAV_Q_COUNT))
-        full = pd.concat([tech, behav])
+        final_df = pd.concat([tech, behav])
 
-        st.session_state.questions = prepare_questions(full)
+        st.session_state.questions = prepare_questions(final_df)
         st.session_state.candidate_data = {
-            "name":name,"dob":str(dob),"qualification":qual,
-            "category":cat,"reg_no":reg,"college":college,"contact":contact
+            "name": name,
+            "dob": str(dob),
+            "qualification": qual,
+            "category": cat,
+            "reg_no": reg,
+            "college": college,
+            "contact": contact
         }
 
         st.session_state.start_time = time.time()
@@ -181,13 +184,12 @@ if not st.session_state.started:
 else:
     elapsed = time.time() - st.session_state.start_time
     remaining = max(0, GLOBAL_TEST_TIME - elapsed)
-    st.sidebar.metric("⏳ Test Time Left", f"{int(remaining//60)}m {int(remaining%60)}s")
+    st.sidebar.metric("⏳ Time Left", f"{int(remaining//60)}m {int(remaining%60)}s")
 
     if remaining <= 0:
         st.session_state.review_mode = True
         st.session_state.review_start = time.time()
 
-    # ---------- REVIEW MODE ----------
     if st.session_state.review_mode:
         review_left = REVIEW_TIME_LIMIT - (time.time() - st.session_state.review_start)
         st.info(f"Review time left: {max(0,int(review_left))} sec")
@@ -214,12 +216,16 @@ else:
                 "submitted_at": time.strftime("%Y-%m-%d %H:%M:%S")
             }
 
-            requests.post(BRIDGE_URL, json=payload, timeout=10)
-            st.success(f"Assessment submitted. Score: {score}%")
+            headers = {"Content-Type": "application/json"}
+            response = requests.post(BRIDGE_URL, json=payload, headers=headers, timeout=10)
+
+            st.success("Assessment submitted successfully")
+            st.write("Bridge status:", response.status_code)
+            st.write("Bridge response:", response.text)
+
             st.session_state.started = False
             st.stop()
 
-    # ---------- QUESTION MODE ----------
     else:
         q = st.session_state.questions[st.session_state.q_index]
         q_elapsed = time.time() - st.session_state.question_start_time
