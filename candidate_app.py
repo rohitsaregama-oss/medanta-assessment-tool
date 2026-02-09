@@ -20,107 +20,75 @@ GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz1qT4L2mNOusKQ3wjT
 st.set_page_config(page_title="Medanta Staff Assessment", layout="centered")
 
 # ================= CSS (DESKTOP + MOBILE) =================
-st.markdown("""
-<style>
+# ================= HEADER =================
 
-/* ---------- PAGE ---------- */
-.stApp {
-    background: #F7F9FC;
-}
+import base64
 
-.block-container {
-    max-width: 900px;
-    padding-left: 1rem;
-    padding-right: 1rem;
-}
-
-/* ---------- TITLES ---------- */
-.main-title {
-    font-size: 30px;
-    font-weight: 800;
-    color: #0B5394;
-    margin-bottom: 16px;
-}
-
-/* ---------- LOGO ---------- */
-.logo-box {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 8px;
-}
-
-/* ---------- HAR EK JAAN ANMOL ---------- */
-.anmol-banner {
-    background: linear-gradient(90deg, #B30000, #6E6E6E);
-    padding: 18px;
-    border-radius: 16px;
-    text-align: center;
-    margin-bottom: 14px;
-}
-
-.anmol-text {
-    color: white;
-    font-size: 22px;
-    font-weight: 700;
-    letter-spacing: 1px;
-}
-
-.anmol-sub {
-    color: #F2F2F2;
-    font-size: 13px;
-    margin-top: 6px;
-}
-
-/* ---------- INTEGRITY ---------- */
-.integrity-banner {
-    background: #FFF4F4;
-    border-left: 6px solid #B30000;
-    padding: 14px;
-    border-radius: 12px;
-    margin-bottom: 24px;
-    font-size: 14px;
-    color: #5A1A1A;
-}
-
-/* ---------- CARDS ---------- */
-.card {
-    background: white;
-    padding: 22px;
-    border-radius: 18px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-    margin-bottom: 22px;
-}
-
-/* ---------- BUTTON ---------- */
-.stButton > button {
-    background: linear-gradient(90deg, #F28C28, #E6761C);
-    color: white;
-    border-radius: 14px;
-    padding: 12px 20px;
-    font-weight: 600;
-    width: 100%;
-}
-
-/* ---------- MOBILE ---------- */
-@media (max-width: 768px) {
-
-    .main-title {
-        font-size: 24px;
-        text-align: center;
-    }
-
-    .anmol-text {
-        font-size: 20px;
-    }
-
-    .block-container {
-        padding-left: 0.8rem;
-        padding-right: 0.8rem;
-    }
-}
-
-</style>
+# --- LOGO ---
+st.markdown(f"""
+<div style="display:flex; justify-content:center; margin-bottom:8px;">
+    <img src="data:image/png;base64,{base64.b64encode(open('MHPL logo 2.png','rb').read()).decode()}" width="140">
+</div>
 """, unsafe_allow_html=True)
+
+# --- TITLE ---
+st.markdown("""
+<h2 style="
+    text-align:center;
+    color:#0B5394;
+    font-weight:800;
+    margin-bottom:14px;
+">
+Medanta Staff Assessment
+</h2>
+""", unsafe_allow_html=True)
+
+# --- INTEGRITY BANNER (TOP) ---
+st.markdown("""
+<div style="
+    background:#FFF4F4;
+    border-left:6px solid #B30000;
+    padding:14px;
+    border-radius:12px;
+    margin-bottom:14px;
+    font-size:14px;
+    color:#5A1A1A;
+">
+<b>Integrity Declaration</b><br>
+This assessment is the exclusive intellectual property of
+<b>Medanta Hospital, Lucknow</b>.<br>
+Sharing, copying, recording, or receiving external assistance
+is strictly prohibited and may lead to disciplinary action.
+</div>
+""", unsafe_allow_html=True)
+
+# --- HAR EK JAAN ANMOL ---
+st.markdown("""
+<div style="
+    background:linear-gradient(90deg,#B30000,#6E6E6E);
+    padding:18px;
+    border-radius:16px;
+    text-align:center;
+    margin-bottom:26px;
+">
+    <div style="
+        color:white;
+        font-size:22px;
+        font-weight:700;
+        letter-spacing:1px;
+    ">
+        हर एक जान अनमोल
+    </div>
+    <div style="
+        color:#F2F2F2;
+        font-size:13px;
+        margin-top:6px;
+    ">
+        Compassion • Care • Clinical Excellence
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
 
 
 # ================= SESSION STATE =================
@@ -340,5 +308,6 @@ else:
         pass
 
     st.success("Assessment submitted successfully.")
+
 
 
