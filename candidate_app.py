@@ -5,265 +5,216 @@ import time
 import random
 from datetime import date
 
-# ======================================================
-# SECRETS
-# ======================================================
-try:
-    ADMIN_MASTER_KEY = st.secrets["ADMIN_MASTER_KEY"]
-except:
-    ADMIN_MASTER_KEY = None
+# ================== CONFIG ==================
+BRIDGE_URL = "https://script.google.com/macros/s/AKfycbwJgM_mAnqnTaoOD-uuiJFovFXNGzgbssbtRiSWE61q5PS1fBLutOYPNOHUctGjLjaB/exec"
 
-# ======================================================
-# CONFIG
-# ======================================================
-BRIDGE_URL = "https://script.google.com/macros/s/AKfycbz08FL5YWmLiWeYAWNYwqWg9nxNzZWh2KUIDA5aSXAU2VdUR7snGVp1CHPfA2_qxSxI/exec"
-
-TOTAL_QUESTIONS = 25
-TECH_Q_COUNT = 18
-BEHAV_Q_COUNT = 7
-
-GLOBAL_TEST_TIME = 25 * 60
-DEFAULT_Q_TIME = 45
-REDUCED_Q_TIME = 25
-REVIEW_TIME_LIMIT = 120
+TECH_MIN, TECH_MAX = 17, 20
+BEHAV_MIN, BEHAV_MAX = 5, 8
+PASS_PERCENT = 0.60   # 60%
 
 st.set_page_config(page_title="Medanta Staff Assessment", layout="centered")
 
-# ======================================================
-# SESSION STATE
-# ======================================================
+# ================== UI STYLING ==================
+st.markdown("""
+<style>
+.stApp { background-color: #F4F8FB; }
+h3 { font-weight: 600; }
+
+div[data-testid="stRadio"] > label {
+    background-color: #FFFFFF;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #E0E7EF;
+    margin-bottom: 6px;
+}
+div[data-testid="stRadio"] > label:hover { background-color: #EAF2FB; }
+
+.stButton button {
+    background-color: #0B5394;
+    color: white;
+    border-radius: 6px;
+    font-weight: 600;
+}
+.stButton button:hover { background-color: #073763; }
+
+[data-testid="stProgress"] > div > div { background-color: #0B5394; }
+</style>
+""", unsafe_allow_html=True)
+
+# ================== BRANDING ==================
+col1, col2, col3 = st.columns([1,2,1])
+with col2:
+    st.image("MHPL logo 2.png", use_container_width=True)
+
+st.markdown("""
+<h3 style="text-align:center; color:#0B5394;">Staff Assessment & Competency Evaluation</h3>
+<p style="text-align:center; color:#555;">Medanta – The Medicity</p>
+<hr>
+""", unsafe_allow_html=True)
+
+# ================== SESSION ==================
 if "started" not in st.session_state:
     st.session_state.update({
         "started": False,
-        "q_index": 0,
-        "answers": {},
         "questions": [],
-        "candidate_data": {},
-        "level": "beginner",
+        "answers": {},
+        "results": {},
+        "competency_map": {},
+        "q_index": 0,
         "start_time": None,
-        "question_start_time": None,
-        "per_q_time": DEFAULT_Q_TIME,
-        "fishy_counter": 0,
-        "review_mode": False,
-        "review_start": None,
-        "admin_unlocked": False
+        "show_result": False,
+        "candidate": {}
     })
 
-# ======================================================
-# 50 BEHAVIOURAL QUESTIONS
-# ======================================================
-BEHAVIORAL_BANK = [
-    {"question":"How do you handle a patient who refuses treatment?","Option A":"Respect and document","Option B":"Explain risks and notify doctor","Option C":"Force treatment","Option D":"Ignore","Correct Answer":"Explain risks and notify doctor"},
-    {"question":"You notice a colleague skipping hand hygiene.","Option A":"Ignore","Option B":"Politely remind","Option C":"Report to HR","Option D":"Do the same","Correct Answer":"Politely remind"},
-    {"question":"A family member asks about another patient.","Option A":"Tell them","Option B":"Protect privacy","Option C":"Share limited info","Option D":"Ignore","Correct Answer":"Protect privacy"},
-    {"question":"You commit a minor medication error with no harm.","Option A":"Hide it","Option B":"Report immediately","Option C":"Wait","Option D":"Tell patient only","Correct Answer":"Report immediately"},
-    {"question":"Patient angry due to waiting time.","Option A":"Argue","Option B":"Listen and empathize","Option C":"Ignore","Option D":"Ask to leave","Correct Answer":"Listen and empathize"},
-    {"question":"Emergency alarm in another unit.","Option A":"Ignore","Option B":"Follow protocol","Option C":"Run immediately","Option D":"Panic","Correct Answer":"Follow protocol"},
-    {"question":"Doctor gives unclear verbal order.","Option A":"Follow anyway","Option B":"Seek clarification","Option C":"Ask nurse","Option D":"Ignore","Correct Answer":"Seek clarification"},
-    {"question":"Spill found in corridor.","Option A":"Walk away","Option B":"Mark/Clean immediately","Option C":"Inform later","Option D":"Ignore","Correct Answer":"Mark/Clean immediately"},
-    {"question":"Patient falls during ambulation.","Option A":"Lift quickly","Option B":"Ease down & call help","Option C":"Leave","Option D":"Ignore","Correct Answer":"Ease down & call help"},
-    {"question":"Conflicting instructions from seniors.","Option A":"Pick one","Option B":"Clarify","Option C":"Ignore","Option D":"Complain","Correct Answer":"Clarify"},
-    {"question":"Primary goal of JCI.","Option A":"Profit","Option B":"Patient safety","Option C":"Branding","Option D":"Staff control","Correct Answer":"Patient safety"},
-    {"question":"Correct patient identification.","Option A":"Room number","Option B":"Name + DOB","Option C":"Diagnosis","Option D":"Guess","Correct Answer":"Name + DOB"},
-    {"question":"When to perform hand hygiene.","Option A":"After care only","Option B":"Before & after care","Option C":"Hourly","Option D":"When dirty","Correct Answer":"Before & after care"},
-    {"question":"Colleague being bullied.","Option A":"Ignore","Option B":"Support & report","Option C":"Join","Option D":"Blame","Correct Answer":"Support & report"},
-    {"question":"Vitals slightly abnormal.","Option A":"Ignore","Option B":"Recheck & report","Option C":"Wait","Option D":"Hide","Correct Answer":"Recheck & report"},
-    {"question":"Sharps container full.","Option A":"Push needles","Option B":"Replace","Option C":"Leave","Option D":"Shake","Correct Answer":"Replace"},
-    {"question":"Professionalism means.","Option A":"Late arrival","Option B":"Punctual & respectful","Option C":"Gossip","Option D":"Ignore rules","Correct Answer":"Punctual & respectful"},
-    {"question":"Discussing patients in lift.","Option A":"Allowed","Option B":"Prohibited","Option C":"Sometimes","Option D":"Only staff","Correct Answer":"Prohibited"},
-    {"question":"Standard precautions apply to.","Option A":"HIV only","Option B":"All patients","Option C":"ICU","Option D":"Surgery","Correct Answer":"All patients"},
-    {"question":"Correct PPE usage.","Option A":"Reuse gloves","Option B":"Discard after use","Option C":"Wash gloves","Option D":"Reuse mask","Correct Answer":"Discard after use"},
-    {"question":"Pressure ulcer prevention.","Option A":"Turn 8 hrs","Option B":"Turn 2 hrs","Option C":"No movement","Option D":"One pillow","Correct Answer":"Turn 2 hrs"},
-    {"question":"Time-out before surgery.","Option A":"Break","Option B":"Verify patient/site","Option C":"Clean","Option D":"Count tools","Correct Answer":"Verify patient/site"},
-    {"question":"Patient requests medical record.","Option A":"Refuse","Option B":"Follow policy","Option C":"Hand over","Option D":"Lie","Correct Answer":"Follow policy"},
-    {"question":"Lost visitor.","Option A":"Ignore","Option B":"Assist","Option C":"Point","Option D":"Walk away","Correct Answer":"Assist"},
-    {"question":"Hand wash duration.","Option A":"5 sec","Option B":"20 sec","Option C":"1 min","Option D":"10 sec","Correct Answer":"20 sec"},
-    {"question":"NPO patient asks for water.","Option A":"Give sip","Option B":"Explain NPO","Option C":"Give glass","Option D":"Ignore","Correct Answer":"Explain NPO"},
-    {"question":"Code Blue refers to.","Option A":"Fire","Option B":"Cardiac arrest","Option C":"Bomb threat","Option D":"Infant abduction","Correct Answer":"Cardiac arrest"},
-    {"question":"Documentation should be.","Option A":"Late","Option B":"Accurate & timely","Option C":"Vague","Option D":"Pencil","Correct Answer":"Accurate & timely"},
-    {"question":"Call bell ringing.","Option A":"Wait","Option B":"Respond immediately","Option C":"Unplug","Option D":"Ignore","Correct Answer":"Respond immediately"},
-    {"question":"Proper lifting technique.","Option A":"Bend waist","Option B":"Use legs","Option C":"Twist","Option D":"Stretch arms","Correct Answer":"Use legs"},
-    {"question":"Hard of hearing patient.","Option A":"Shout","Option B":"Face & speak clearly","Option C":"Avoid","Option D":"Family only","Correct Answer":"Face & speak clearly"},
-    {"question":"Donning PPE means.","Option A":"Remove","Option B":"Put on","Option C":"Clean","Option D":"Wash hands","Correct Answer":"Put on"},
-    {"question":"Yellow BMW bag.","Option A":"General waste","Option B":"Infectious waste","Option C":"Glass","Option D":"Paper","Correct Answer":"Infectious waste"},
-    {"question":"Discharge responsibility.","Option A":"Wheel out","Option B":"Verify instructions","Option C":"Say bye","Option D":"Ignore","Correct Answer":"Verify instructions"},
-    {"question":"Telephone orders.","Option A":"Ignore","Option B":"Read back","Option C":"Later","Option D":"Avoid","Correct Answer":"Read back"},
-    {"question":"Patient dizzy while walking.","Option A":"Continue","Option B":"Assist to sit","Option C":"Leave","Option D":"Ignore","Correct Answer":"Assist to sit"},
-    {"question":"5 Rights include.","Option A":"Right patient","Option B":"Right price","Option C":"Right hospital","Option D":"Right building","Correct Answer":"Right patient"},
-    {"question":"Late for duty.","Option A":"Sneak in","Option B":"Inform supervisor","Option C":"Lie","Option D":"Ignore","Correct Answer":"Inform supervisor"},
-    {"question":"Suicidal patient.","Option A":"Leave alone","Option B":"Constant observation","Option C":"Privacy","Option D":"Ignore","Correct Answer":"Constant observation"},
-    {"question":"Teamwork requires.","Option A":"Silence","Option B":"Clear communication","Option C":"Competition","Option D":"Secrets","Correct Answer":"Clear communication"},
-    {"question":"IV site red and swollen.","Option A":"Ignore","Option B":"Stop & report","Option C":"Increase rate","Option D":"Cover","Correct Answer":"Stop & report"},
-    {"question":"Most common infection source.","Option A":"Air","Option B":"Hands","Option C":"Food","Option D":"Visitors","Correct Answer":"Hands"},
-    {"question":"Unconscious patient consent.","Option A":"Wait family","Option B":"Implied consent","Option C":"Do nothing","Option D":"Ask staff","Correct Answer":"Implied consent"},
-    {"question":"ID badge should be.","Option A":"Pocket","Option B":"Visible","Option C":"Car","Option D":"Home","Correct Answer":"Visible"},
-    {"question":"Complaint about doctor.","Option A":"Agree","Option B":"Escalate properly","Option C":"Defend","Option D":"Ignore","Correct Answer":"Escalate properly"},
-    {"question":"Cultural competence.","Option A":"Ignore culture","Option B":"Respect all","Option C":"Stereotype","Option D":"Avoid","Correct Answer":"Respect all"}
+# ================== TIPS ==================
+IN_EXAM_TIPS = [
+    "🔍 Read the question carefully — often the answer is in the wording.",
+    "🧘 Take your time. Calm thinking leads to safer decisions.",
+    "✅ Eliminate unsafe options first — patient safety comes before speed.",
+    "💡 Trust your training and judgement.",
+    "📘 If unsure, choose the option aligned with hospital protocol."
 ]
 
-# ======================================================
-# SIDEBAR ADMIN
-# ======================================================
-with st.sidebar:
-    st.subheader("⚙️ Admin")
-    if st.checkbox("Unlock Level Settings"):
-        key = st.text_input("Master Key", type="password")
-        if ADMIN_MASTER_KEY and key == ADMIN_MASTER_KEY:
-            st.session_state.admin_unlocked = True
-            st.success("Admin unlocked")
+# ================== QUESTION ENGINE ==================
+def prepare_questions(category, level="beginner"):
+    tech_df = pd.read_excel("questions.xlsx")
+    behav_df = pd.read_excel("Behavioural_Questions_100_with_Competency.xlsx")
 
-    if st.session_state.admin_unlocked and not st.session_state.started:
-        st.session_state.level = st.selectbox(
-            "Difficulty",
-            ["beginner","intermediate","advanced"],
-            index=["beginner","intermediate","advanced"].index(st.session_state.level)
-        )
+    tech_count = random.randint(TECH_MIN, TECH_MAX)
+    behav_count = random.randint(BEHAV_MIN, BEHAV_MAX)
 
-    st.divider()
-    st.info(f"Difficulty: **{st.session_state.level.upper()}**")
+    tech_pool = tech_df[
+        (tech_df["staff_category"] == category) &
+        (tech_df["level"].str.lower() == level.lower())
+    ]
 
-# ======================================================
-# QUESTION PREP
-# ======================================================
-def prepare_questions(df):
+    tech_q = tech_pool.sample(tech_count)
+    behav_q = behav_df.sample(behav_count)
+
     questions = []
-    for _, r in df.iterrows():
+
+    for _, r in tech_q.iterrows():
         opts = [r["Option A"], r["Option B"], r["Option C"], r["Option D"]]
         random.shuffle(opts)
         questions.append({
             "question": r["question"],
             "options": opts,
-            "correct": r["Correct Answer"]
+            "correct": r["Correct Answer"],
+            "competency": "Technical"
         })
+
+    for _, r in behav_q.iterrows():
+        opts = [r["Option A"], r["Option B"], r["Option C"], r["Option D"]]
+        random.shuffle(opts)
+        questions.append({
+            "question": r["question"],
+            "options": opts,
+            "correct": r["Correct Answer"],
+            "competency": r["competency"]
+        })
+
     random.shuffle(questions)
     return questions
 
-# ======================================================
-# SCREEN 1 – START
-# ======================================================
+# ================== START SCREEN ==================
 if not st.session_state.started:
-    st.title("🏥 Medanta Staff Assessment")
+    st.subheader("Candidate Information")
 
     name = st.text_input("Full Name")
     dob = st.date_input("Date of Birth", min_value=date(1960,1,1))
-    qual = st.text_input("Qualification")
-    cat = st.selectbox("Staff Category", ["Nursing","Non-Nursing"])
-    reg = st.text_input("Registration Number") if cat=="Nursing" else "N/A"
-    college = st.text_input("College Name")
-    contact = st.text_input("Contact Number")
+    qualification = st.text_input("Qualification")
+    category = st.selectbox("Staff Category", ["Nursing","Clinician","Non Clinical","Support"])
+
+    reg_no = st.text_input("Registration Number") if category in ["Nursing","Clinician"] else st.text_input("Registration Number (Optional)")
+    mobile = st.text_input("Mobile Number (10 digits)")
+    college = st.text_input("College / Institute")
 
     if st.button("Start Assessment"):
-        if not (name and contact.isdigit() and len(contact)==10):
-            st.warning("Invalid details")
+        if not name or not mobile.isdigit() or len(mobile) != 10:
+            st.warning("Please enter valid details.")
             st.stop()
 
-        df = pd.read_excel("questions.xlsx")
-        tech = df[df["level"].str.lower()==st.session_state.level].sample(TECH_Q_COUNT)
-        behav = pd.DataFrame(random.sample(BEHAVIORAL_BANK, BEHAV_Q_COUNT))
-        final_df = pd.concat([tech, behav])
+        if category in ["Nursing","Clinician"] and not reg_no:
+            st.warning("Registration Number is mandatory.")
+            st.stop()
 
-        st.session_state.questions = prepare_questions(final_df)
-        st.session_state.candidate_data = {
+        st.session_state.questions = prepare_questions(category)
+        st.session_state.start_time = time.time()
+        st.session_state.started = True
+        st.session_state.candidate = {
             "name": name,
             "dob": str(dob),
-            "qualification": qual,
-            "category": cat,
-            "reg_no": reg,
-            "college": college,
-            "contact": contact
+            "qualification": qualification,
+            "category": category,
+            "registration_no": reg_no,
+            "mobile": mobile,
+            "college": college
         }
-
-        st.session_state.start_time = time.time()
-        st.session_state.question_start_time = time.time()
-        st.session_state.started = True
         st.rerun()
 
-# ======================================================
-# SCREEN 2 – EXAM
-# ======================================================
+# ================== EXAM ==================
+elif not st.session_state.show_result:
+    total_q = len(st.session_state.questions)
+    st.progress((st.session_state.q_index + 1) / total_q)
+
+    q = st.session_state.questions[st.session_state.q_index]
+    st.subheader(f"Question {st.session_state.q_index + 1} of {total_q}")
+    st.write(q["question"])
+    st.info(random.choice(IN_EXAM_TIPS))
+
+    choice = st.radio("Select your answer", q["options"], index=None)
+
+    if choice:
+        qn = f"Q{st.session_state.q_index + 1}"
+        correct = choice == q["correct"]
+
+        st.session_state.answers[st.session_state.q_index] = choice
+        st.session_state.results[qn] = "✔" if correct else "✖"
+        st.session_state.competency_map[qn] = q["competency"]
+
+        st.session_state.q_index += 1
+        if st.session_state.q_index >= total_q:
+            st.session_state.show_result = True
+        st.rerun()
+
+# ================== RESULT ==================
 else:
-    elapsed = time.time() - st.session_state.start_time
-    remaining = max(0, GLOBAL_TEST_TIME - elapsed)
-    st.sidebar.metric("⏳ Time Left", f"{int(remaining//60)}m {int(remaining%60)}s")
+    elapsed = int(time.time() - st.session_state.start_time)
+    mins, secs = divmod(elapsed, 60)
 
-    if remaining <= 0:
-        st.session_state.review_mode = True
-        st.session_state.review_start = time.time()
+    total_q = len(st.session_state.questions)
+    correct_count = list(st.session_state.results.values()).count("✔")
+    score_text = f"{correct_count}/{total_q}"
+    result_text = "PASS" if (correct_count / total_q) >= PASS_PERCENT else "NOT CLEARED"
 
-    if st.session_state.review_mode:
-        review_left = REVIEW_TIME_LIMIT - (time.time() - st.session_state.review_start)
-        st.info(f"Review time left: {max(0,int(review_left))} sec")
+    st.markdown("<h2 style='color:#0B5394;'>Assessment Report Card</h2>", unsafe_allow_html=True)
+    st.success(f"Score: {score_text}")
+    st.write(f"**Result:** {result_text}")
+    st.write(f"**Time Taken:** {mins} min {secs} sec")
 
-        cols = st.columns(5)
-        for i in range(TOTAL_QUESTIONS):
-            mark = "✅" if i in st.session_state.answers else "⚪"
-            if cols[i % 5].button(f"{mark} Q{i+1}"):
-                st.session_state.q_index = i
-                st.session_state.review_mode = False
-                st.session_state.question_start_time = time.time()
-                st.rerun()
-
-        if st.button("Final Submit") or review_left <= 0:
-            correct = sum(
-                1 for i,q in enumerate(st.session_state.questions)
-                if st.session_state.answers.get(i)==q["correct"]
-            )
-            score = round((correct/TOTAL_QUESTIONS)*100,2)
-
-            payload = {
-                **st.session_state.candidate_data,
-                "score_percent": score,
-                "submitted_at": time.strftime("%Y-%m-%d %H:%M:%S")
-            }
-
-            headers = {"Content-Type": "application/json"}
-            response = requests.post(BRIDGE_URL, json=payload, headers=headers, timeout=10)
-
-            st.success("Assessment submitted successfully")
-            st.write("Bridge status:", response.status_code)
-            st.write("Bridge response:", response.text)
-
-            st.session_state.started = False
-            st.stop()
-
+    if (correct_count / total_q) >= 0.80:
+        tip = "🌟 Excellent fundamentals. Keep reinforcing best practices."
+    elif (correct_count / total_q) >= 0.60:
+        tip = "👍 Good base. Revisit patient safety and communication scenarios."
     else:
-        q = st.session_state.questions[st.session_state.q_index]
-        q_elapsed = time.time() - st.session_state.question_start_time
+        tip = "📘 Learning opportunity. Focus on protocols and safety basics."
 
-        if (
-            q_elapsed > st.session_state.per_q_time
-            and st.session_state.q_index not in st.session_state.answers
-        ):
-            st.session_state.q_index += 1
-            st.session_state.question_start_time = time.time()
-            if st.session_state.q_index >= TOTAL_QUESTIONS:
-                st.session_state.review_mode = True
-                st.session_state.review_start = time.time()
-            st.rerun()
+    st.info(f"**Self-Improvement Tip:** {tip}")
 
-        st.subheader(f"Question {st.session_state.q_index+1}")
-        st.write(q["question"])
-        st.caption(f"Time left: {int(st.session_state.per_q_time - q_elapsed)} sec")
+    st.divider()
+    st.write("### Question-wise Summary")
+    for qn, res in st.session_state.results.items():
+        st.write(f"{qn} : {res}")
 
-        choice = st.radio("Select answer", q["options"], index=None)
+    payload = {
+        **st.session_state.candidate,
+        "score": score_text,
+        "duration": f"{mins}m {secs}s",
+        "result": result_text,
+        "question_map": st.session_state.results,
+        "answers": st.session_state.answers,
+        "competency_map": st.session_state.competency_map
+    }
 
-        if choice:
-            if q_elapsed > 40:
-                st.session_state.fishy_counter += 1
-            else:
-                st.session_state.fishy_counter = 0
-
-            if st.session_state.fishy_counter >= 3:
-                st.session_state.per_q_time = REDUCED_Q_TIME
-
-            st.session_state.answers[st.session_state.q_index] = choice
-            st.session_state.q_index += 1
-            st.session_state.question_start_time = time.time()
-
-            if st.session_state.q_index >= TOTAL_QUESTIONS:
-                st.session_state.review_mode = True
-                st.session_state.review_start = time.time()
-
-            st.rerun()
-
-
+    requests.post(BRIDGE_URL, json=payload, timeout=10)
+    st.stop()
