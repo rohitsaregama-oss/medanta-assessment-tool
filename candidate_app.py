@@ -124,7 +124,7 @@ with col2:
 st.markdown("""
 <div style="text-align:center;">
 <h2 style="color:#0B5394;">Staff Assessment & Competency Evaluation</h2>
-<p style="color:#555;">Medanta – The Medicity</p>
+<p style="color:#555;">Medanta – Lucknow</p>
 </div>
 <hr>
 """, unsafe_allow_html=True)
@@ -333,3 +333,4 @@ else:
 
     requests.post(BRIDGE_URL, json=payload, timeout=10)
     st.stop()
+
