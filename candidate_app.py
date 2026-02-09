@@ -40,14 +40,6 @@ st.markdown("""
     margin-bottom:16px;
 }
 
-.slogan-bar {
-    background:#FFFFFF;
-    padding:16px;
-    border-radius:16px;
-    box-shadow:0 6px 16px rgba(0,0,0,0.06);
-    text-align:center;
-    margin-bottom:26px;
-}
 
 .timer-box {
     position:fixed;
@@ -313,3 +305,4 @@ else:
         pass
 
     st.success("Assessment submitted successfully.")
+
