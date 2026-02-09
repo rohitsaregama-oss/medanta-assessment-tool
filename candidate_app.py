@@ -16,7 +16,7 @@ except:
 # ======================================================
 # CONFIG
 # ======================================================
-BRIDGE_URL = "https://script.google.com/macros/s/AKfycbxO_UxLWQ6SFLltOVC5SfhcKMsFP3uDVCblmkjBM4XY3AFK_EtSKMR9wxBWLdA2qmf4/exec"
+BRIDGE_URL = "https://script.google.com/macros/s/AKfycbz08FL5YWmLiWeYAWNYwqWg9nxNzZWh2KUIDA5aSXAU2VdUR7snGVp1CHPfA2_qxSxI/exec"
 
 TOTAL_QUESTIONS = 25
 TECH_Q_COUNT = 18
@@ -265,4 +265,5 @@ else:
                 st.session_state.review_start = time.time()
 
             st.rerun()
+
 
