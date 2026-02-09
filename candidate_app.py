@@ -13,98 +13,55 @@ SUSPICIOUS_THRESHOLD = 55
 SUSPICIOUS_LIMIT = 3
 
 ADMIN_KEY = "Medanta@Admin2026"
-# Your Updated Web App URL
-GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbUvcrZG6D9dW-q8j4Zc3FdcGUpn55CvxUXvoMG7yq5Z04Y8xXRYVwAtzHikHcX2dYC/exec"
+GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyevoLAfqRpNG74ZxaLgL_vzlDqqlE19S1BvI_y-8wlwCsHfm_und3q6WXoWPV3c61C/exec"
 
-st.set_page_config(
-    page_title="Medanta Staff Assessment",
-    layout="centered",
-    initial_sidebar_state="collapsed"
-)
-
-# ================= HELPERS =================
-def normalize_columns(df):
-    df.columns = df.columns.astype(str).str.strip().str.lower().str.replace(" ", "_")
-    return df
-
-# ================= STYLES =================
-st.markdown("""
-<style>
-body { background:#F6F8FB; }
-.center { text-align:center; }
-.card {
-    background:white; padding:22px; border-radius:16px;
-    box-shadow:0 10px 24px rgba(0,0,0,0.06); margin-bottom:20px;
-}
-.integrity {
-    background:#FFF4F4; border-left:6px solid #B30000;
-    padding:14px; border-radius:12px; font-size:14px; color:#5A1A1A; margin-bottom:18px;
-}
-.timer {
-    background:#0B5394; color:white; padding:12px; border-radius:12px;
-    text-align:center; font-weight:600; margin-bottom:16px;
-}
-.slogan { color:#B30000; font-size:22px; font-weight:700; margin-top:6px; }
-.subtle { color:#666; font-size:13px; }
-</style>
-""", unsafe_allow_html=True)
+st.set_page_config(page_title="Medanta Assessment", layout="centered", initial_sidebar_state="collapsed")
 
 # ================= SESSION STATE =================
 if "started" not in st.session_state:
     st.session_state.update({
-        "started": False,
-        "questions": [],
-        "answers": {},
-        "idx": 0,
-        "start_time": None,
-        "q_start": None,
-        "q_limit": DEFAULT_Q_TIME,
-        "slow": 0,
-        "show_result": False,
-        "candidate": {},
-        "admin": False,
-        "level": "Beginner"
+        "started": False, "questions": [], "answers": {}, "idx": 0, "start_time": None,
+        "q_start": None, "q_limit": DEFAULT_Q_TIME, "slow": 0, "show_result": False,
+        "candidate": {}, "admin": False, "level": "Beginner", "submitted": False
     })
 
-# ================= ADMIN PANEL =================
+# ================= ADMIN & STYLES =================
 with st.sidebar:
     if st.checkbox("⚙️ Admin"):
         if not st.session_state.admin:
             key = st.text_input("Admin Key", type="password")
             if st.button("Unlock"):
-                if key == ADMIN_KEY:
-                    st.session_state.admin = True
-                    st.rerun()
-                else:
-                    st.error("Invalid key")
+                if key == ADMIN_KEY: st.session_state.admin = True; st.rerun()
         else:
-            st.session_state.level = st.selectbox(
-                "Set Assessment Level",
-                ["Beginner", "Intermediate", "Advanced"],
-                index=["Beginner", "Intermediate", "Advanced"].index(st.session_state.level)
-            )
-            if st.button("Lock Admin"):
-                st.session_state.admin = False
-                st.rerun()
+            st.session_state.level = st.selectbox("Exam Level", ["Beginner", "Intermediate", "Advanced"])
+            if st.button("Lock"): st.session_state.admin = False; st.rerun()
+
+st.markdown("""
+<style>
+.card { background:white; padding:20px; border-radius:15px; box-shadow:0 4px 10px rgba(0,0,0,0.1); margin-bottom:20px; }
+.timer-text { color:#0B5394; font-weight:bold; text-align:center; font-size:18px; }
+.center { text-align:center; }
+</style>
+""", unsafe_allow_html=True)
 
 # ================= HEADER =================
-st.markdown("<h2 class='center'>Medanta Staff Assessment</h2>", unsafe_allow_html=True)
-st.markdown('<div class="integrity"><b>Integrity Declaration:</b> This assessment is the property of <b>Medanta Hospital, Lucknow</b>. Sharing or copying is prohibited.</div>', unsafe_allow_html=True)
-st.markdown("<div class='center slogan'>हर एक जान अनमोल</div><div class='center subtle'>Compassion • Care • Clinical Excellence</div>", unsafe_allow_html=True)
+try:
+    st.image("MHPL logo 2.png", width=250)
+except:
+    st.title("🏥 Medanta Assessment")
+
+st.markdown("<h4 class='center'>Staff Clinical Competency Assessment</h4>", unsafe_allow_html=True)
 
 # ================= STAFF INFO =================
 if not st.session_state.started:
     st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.subheader("Candidate Information")
+    name = st.text_input("Full Name *")
+    mobile = st.text_input("Mobile Number *")
+    reg_no = st.text_input("Nursing Registration Number")
     
-    name = st.text_input("Full Name")
-    dob = st.date_input("Date of Birth", min_value=date(1960,1,1))
-    qualification = st.text_input("Qualification")
-    category = st.selectbox("Staff Category", ["Nursing","Non-Nursing","Other"])
-    reg_no = st.text_input("Registration Number")
-    
-    reg_auth = st.selectbox("Select the Nursing Registration authority", [
-        "Choose an option...", "Andhra Pradesh Nurses & Midwives Council", "Arunachal Pradesh Nursing Council",
+    reg_auth = st.selectbox("Select the Nursing Registration Authority *", [
+        "Choose an option...",
+        "Andhra Pradesh Nurses & Midwives Council", "Arunachal Pradesh Nursing Council",
         "Assam Nurses' Midwives' & Health Visitors' Council", "Bihar Nurses Registration Council",
         "Chhattisgarh Nursing Council", "Delhi Nursing Council", "Goa Nursing Council",
         "Gujarat Nursing Council", "Haryana Nurses & Nurse-Midwives Council",
@@ -117,36 +74,26 @@ if not st.session_state.started:
         "Tamil Nadu Nurses & Midwives Council", "Telangana State Nursing Council",
         "Tripura Nursing Council", "Uttar Pradesh Nurses & Midwives Council",
         "Uttarakhand Nurses & Midwives Council", "West Bengal Nursing Council",
-        "Other / Foreign Council", "Not Applicable"
+        "Other State Council", "Foreign Nursing Council", "Not Applicable"
     ])
     
-    mobile = st.text_input("Mobile Number")
     college = st.text_input("College / Institute")
 
     if st.button("Start Assessment"):
         if not name or not mobile or reg_auth == "Choose an option...":
-            st.warning("Please fill Name, Mobile, and Select the Registration Authority.")
+            st.error("Please fill Name, Mobile, and Registration Authority.")
         else:
             try:
-                tech = normalize_columns(pd.read_excel("questions.xlsx"))
-                beh = normalize_columns(pd.read_excel("Behavioural_Questions_100_with_Competency.xlsx"))
-
-                t_count = random.randint(17, 20)
-                b_count = TOTAL_QUESTIONS - t_count
-
-                tech_q = tech[tech["level"].str.lower() == st.session_state.level.lower()].sample(t_count)
-                beh_q = beh.sample(b_count)
-
-                st.session_state.questions = pd.concat([tech_q, beh_q]).sample(TOTAL_QUESTIONS).to_dict("records")
+                tech = pd.read_excel("questions.xlsx")
+                beh = pd.read_excel("Behavioural_Questions_100_with_Competency.xlsx")
+                t_q = tech[tech["level"].str.lower() == st.session_state.level.lower()].sample(20)
+                b_q = beh.sample(5)
+                st.session_state.questions = pd.concat([t_q, b_q]).sample(25).to_dict("records")
                 
-                # Generate Bridge Key
-                bridge_id = f"MED-{random.randint(1000, 9999)}-{int(time.time() % 10000)}"
-                
+                b_key = f"MED-{random.randint(100,999)}-{int(time.time()%1000)}"
                 st.session_state.candidate = {
-                    "bridge_key": bridge_id,
-                    "name": name, "dob": str(dob), "qualification": qualification,
-                    "category": category, "registration_number": reg_no,
-                    "registration_authority": reg_auth, "mobile": mobile, "college": college
+                    "bridge_key": b_key, "name": name, "mobile": mobile, 
+                    "reg_no": reg_no, "reg_auth": reg_auth, "level": st.session_state.level, "college": college
                 }
                 st.session_state.start_time = time.time()
                 st.session_state.started = True
@@ -155,79 +102,50 @@ if not st.session_state.started:
                 st.error(f"Error loading files: {e}")
     st.markdown("</div>", unsafe_allow_html=True)
 
-# ================= EXAM INTERFACE =================
+# ================= EXAM =================
 elif not st.session_state.show_result:
-    if st.session_state.q_start is None:
-        st.session_state.q_start = time.time()
-
+    if st.session_state.q_start is None: st.session_state.q_start = time.time()
     elapsed = int(time.time() - st.session_state.q_start)
     remain = max(0, st.session_state.q_limit - elapsed)
 
-    st.markdown(f"<div class='timer'>⏱ Question Time: {remain}s</div>", unsafe_allow_html=True)
+    st.markdown(f"<p class='timer-text'>⏱ Time Left: {remain}s</p>", unsafe_allow_html=True)
     
     q = st.session_state.questions[st.session_state.idx]
-    st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.markdown(f"**Question {st.session_state.idx+1}/{TOTAL_QUESTIONS}** \n\n{q['question']}")
+    st.markdown(f"<div class='card'><strong>Question {st.session_state.idx+1}/25</strong><br><br>{q['question']}</div>", unsafe_allow_html=True)
+    
+    choice = st.radio("Select Answer:", [q["option_a"], q["option_b"], q["option_c"], q["option_d"]], key=f"q{st.session_state.idx}")
 
-    choice = st.radio("Select Option:", [q["option_a"], q["option_b"], q["option_c"], q["option_d"]], key=f"q{st.session_state.idx}")
-
-    if st.button("Next") or remain <= 0:
-        if elapsed >= SUSPICIOUS_THRESHOLD: st.session_state.slow += 1
-        else: st.session_state.slow = 0
-        
-        if st.session_state.slow >= SUSPICIOUS_LIMIT:
-            st.session_state.q_limit = REDUCED_Q_TIME
-
+    if st.button("Next Question") or remain <= 0:
         st.session_state.answers[f"Q{st.session_state.idx+1}"] = choice
         st.session_state.idx += 1
         st.session_state.q_start = None
-        
-        if st.session_state.idx >= TOTAL_QUESTIONS:
-            st.session_state.show_result = True
+        if st.session_state.idx >= 25: st.session_state.show_result = True
         st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
 
-# ================= RESULT & SUBMISSION =================
+# ================= RESULTS =================
 else:
-    correct = sum(1 for i, q in enumerate(st.session_state.questions) if st.session_state.answers.get(f"Q{i+1}") == q["correct_answer"])
-    mins, secs = divmod(int(time.time() - st.session_state.start_time), 60)
-    result_status = "CLEARED" if correct >= 15 else "NOT CLEARED"
+    correct = 0
+    payload = {**st.session_state.candidate}
+    for i in range(25):
+        u_ans = st.session_state.answers.get(f"Q{i+1}")
+        c_ans = st.session_state.questions[i]["correct_answer"]
+        is_right = (u_ans == c_ans)
+        if is_right: correct += 1
+        payload[f"Q{i+1}"] = u_ans
+        payload[f"Q{i+1}_status"] = "CORRECT" if is_right else "WRONG"
 
-    st.markdown(f"""
-    <div class="card" style="text-align:center;">
-        <h3 style="color:#666;">Assessment ID: {st.session_state.candidate['bridge_key']}</h3>
-        <h1 style="color:#0B5394;">Score: {correct} / {TOTAL_QUESTIONS}</h1>
-        <p><b>Status:</b> {result_status}</p>
-        <p><b>Level:</b> {st.session_state.level} | <b>Time:</b> {mins}m {secs}s</p>
-    </div>
-    """, unsafe_allow_html=True)
+    payload["score"] = f"{correct}/25"
+    st.markdown(f"<div class='card center'><h2>Score: {correct}/25</h2><p>ID: {st.session_state.candidate['bridge_key']}</p></div>", unsafe_allow_html=True)
 
-    # Construct Extended Payload for Google Sheets
-    payload = {
-        **st.session_state.candidate,
-        "score": f"{correct}/{TOTAL_QUESTIONS}",
-        "duration": f"{mins}m {secs}s",
-        "result": result_status,
-        "level": st.session_state.level
-    }
-
-    # Add each answer + correctness flag
-    for i in range(TOTAL_QUESTIONS):
-        user_ans = st.session_state.answers.get(f"Q{i+1}", "No Answer")
-        real_correct_ans = st.session_state.questions[i]["correct_answer"]
-        payload[f"Q{i+1}"] = user_ans
-        payload[f"Q{i+1}_is_correct"] = (user_ans == real_correct_ans)
-
-    # Submit to Google Sheets
-    if "submitted" not in st.session_state:
+    if not st.session_state.submitted:
         try:
-            response = requests.post(GOOGLE_SCRIPT_URL, json=payload, timeout=20)
-            if response.status_code == 200:
-                st.success(f"Successfully Submitted. Reference: {st.session_state.candidate['bridge_key']}")
+            r = requests.post(GOOGLE_SCRIPT_URL, json=payload, timeout=20)
+            if r.status_code == 200:
+                st.success("Assessment Submitted Successfully!")
                 st.session_state.submitted = True
         except:
-            st.error("Submission failed. Please screenshot this page.")
+            st.error("Submission failed. Please contact Admin.")
 
-    if st.button("Finish & Exit"):
+    if st.button("Finish"):
         st.session_state.clear()
         st.rerun()
