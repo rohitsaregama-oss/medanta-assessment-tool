@@ -5,12 +5,11 @@ import time
 import random
 from datetime import date
 
-# ===================== CONFIG =====================
+# ================= CONFIG =================
 BRIDGE_URL = "https://script.google.com/macros/s/AKfycbz1qT4L2mNOusKQ3wjTHwh4tbPHGn0Kb-ek9Anyyn9J7YJKrzCYzQvOKv-FLYlsHmAS/exec"
 
 TOTAL_TEST_TIME = 25 * 60  # 25 minutes
 
-# Per-question integrity rules
 DEFAULT_Q_TIME = 60
 REDUCED_Q_TIME = 40
 SUSPICIOUS_THRESHOLD = 55
@@ -24,7 +23,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# ===================== STYLES =====================
+# ================= STYLES =================
 st.markdown("""
 <style>
 body {
@@ -35,7 +34,7 @@ body {
     padding: 24px;
     border-radius: 14px;
     box-shadow: 0 6px 18px rgba(0,0,0,0.08);
-    margin-bottom: 20px;
+    margin-bottom: 22px;
 }
 .section-title {
     font-size: 20px;
@@ -74,7 +73,7 @@ body {
 </style>
 """, unsafe_allow_html=True)
 
-# ===================== SESSION INIT =====================
+# ================= SESSION STATE =================
 if "started" not in st.session_state:
     st.session_state.update({
         "started": False,
@@ -89,29 +88,34 @@ if "started" not in st.session_state:
         "candidate": {}
     })
 
-# ===================== HEADER =====================
-st.image("MHPL logo 2.png", width=160)
+# ================= HEADER =================
+st.image("MHPL logo 2.png", width=150)
 
+st.markdown(
+    "<h2 style='color:#0B5394; margin-bottom:10px;'>Medanta Staff Assessment</h2>",
+    unsafe_allow_html=True
+)
+
+# White rectangular slogan bar (as requested)
 st.markdown("""
 <div style="
-    width:100%;
-    background: linear-gradient(90deg, #B30000 0%, #7A7A7A 100%);
-    padding:22px 10px;
-    border-radius:14px;
-    text-align:center;
+    background:#FFFFFF;
+    padding:16px;
+    border-radius:12px;
     margin-bottom:24px;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    text-align:center;
 ">
-    <div style="color:white; font-size:26px; font-weight:700;">
+    <div style="color:#B30000; font-size:22px; font-weight:600; letter-spacing:1px;">
         हर एक जान अनमोल
     </div>
-    <div style="color:#F2F2F2; font-size:14px;">
+    <div style="margin-top:6px; color:#777; font-size:13px;">
         Compassion • Care • Clinical Excellence
     </div>
 </div>
 """, unsafe_allow_html=True)
 
-# ===================== CANDIDATE INFO =====================
+# ================= STAFF INFO =================
 if not st.session_state.started:
 
     st.markdown('<div class="card">', unsafe_allow_html=True)
@@ -129,7 +133,7 @@ if not st.session_state.started:
     <div class="tip-box">
     ⚠️ <b>Integrity Reminder:</b><br>
     This assessment is the exclusive intellectual property of Medanta Hospital, Lucknow.
-    Sharing, copying, or external assistance is strictly prohibited.
+    Sharing, copying, recording, or seeking external assistance is strictly prohibited.
     </div>
     """, unsafe_allow_html=True)
 
@@ -151,14 +155,16 @@ if not st.session_state.started:
             tech_q = tech_df.sample(random.randint(TECH_MIN, TECH_MAX)).to_dict("records")
             beh_q = beh_df.sample(random.randint(BEH_MIN, BEH_MAX)).to_dict("records")
 
-            st.session_state.questions = random.sample(tech_q + beh_q, len(tech_q + beh_q))
+            st.session_state.questions = random.sample(
+                tech_q + beh_q, len(tech_q + beh_q)
+            )
             st.session_state.start_time = time.time()
             st.session_state.started = True
             st.rerun()
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-# ===================== EXAM =====================
+# ================= EXAM =================
 elif not st.session_state.show_result:
 
     elapsed = int(time.time() - st.session_state.start_time)
@@ -190,9 +196,12 @@ elif not st.session_state.show_result:
     q_remaining = max(0, st.session_state.current_q_time_limit - q_elapsed)
 
     st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown(f"<b>Question {st.session_state.q_index + 1}</b><br>{q['question']}", unsafe_allow_html=True)
+    st.markdown(
+        f"<b>Question {st.session_state.q_index + 1}</b><br>{q['question']}",
+        unsafe_allow_html=True
+    )
 
-    option = st.radio(
+    choice = st.radio(
         "Select one option:",
         [q["Option A"], q["Option B"], q["Option C"], q["Option D"]],
         key=f"q_{st.session_state.q_index}"
@@ -215,7 +224,7 @@ elif not st.session_state.show_result:
         if st.session_state.suspicious_streak >= SUSPICIOUS_LIMIT:
             st.session_state.current_q_time_limit = REDUCED_Q_TIME
 
-        st.session_state.answers[f"Q{st.session_state.q_index+1}"] = option
+        st.session_state.answers[f"Q{st.session_state.q_index+1}"] = choice
         st.session_state.q_index += 1
         st.session_state.question_start_time = None
 
@@ -226,40 +235,36 @@ elif not st.session_state.show_result:
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-# ===================== RESULT =====================
+# ================= RESULT =================
 else:
     total_q = len(st.session_state.questions)
     correct = 0
 
     for i, q in enumerate(st.session_state.questions):
-        ans = st.session_state.answers.get(f"Q{i+1}")
-        if ans == q["Correct Answer"]:
+        if st.session_state.answers.get(f"Q{i+1}") == q["Correct Answer"]:
             correct += 1
 
-    percentage = correct / total_q
     mins, secs = divmod(int(time.time() - st.session_state.start_time), 60)
-
+    percentage = correct / total_q
     result_text = "CLEARED" if percentage >= 0.6 else "NOT CLEARED"
 
     if percentage < 0.4:
-        tip = "Strengthen fundamentals and revise core protocols regularly."
+        tip = "Strengthen core concepts and standard operating procedures through focused revision."
     elif percentage < 0.6:
-        tip = "You are progressing well. Focused practice will improve outcomes."
+        tip = "You are progressing well. Targeted practice will further enhance confidence."
     else:
-        tip = "Excellent performance. Continue reinforcing best practices."
+        tip = "Excellent performance. Continue reinforcing best practices and mentoring peers."
 
     st.markdown(f"""
     <div class="card">
         <div class="section-title">Assessment Report Card</div>
-
         <b>Score:</b> {correct}/{total_q}<br>
         <b>Result:</b> {result_text}<br>
         <b>Time Taken:</b> {mins}m {secs}s
-
         <hr>
         <div class="tip-box">
-        🌱 <b>Professional Insight:</b><br>
-        {tip}
+            🌱 <b>Professional Insight:</b><br>
+            {tip}
         </div>
     </div>
     """, unsafe_allow_html=True)
