@@ -106,22 +106,42 @@ if not st.session_state.started:
     reg_no = st.text_input("Registration Number")
     
     # Comprehensive Registration Authority Dropdown
-    reg_auth = st.selectbox("Registration Authority", [
-        "Andhra Pradesh Nurses & Midwives Council", "Arunachal Pradesh Nursing Council",
-        "Assam Nurses' Midwives' & Health Visitors' Council", "Bihar Nurses Registration Council",
-        "Chhattisgarh Nursing Council", "Delhi Nursing Council", "Goa Nursing Council",
-        "Gujarat Nursing Council", "Haryana Nurses & Nurse-Midwives Council",
-        "Himachal Pradesh Nurses Registration Council", "Indian Nursing Council (NRTS)",
-        "Jharkhand Nurses Registration Council", "Karnataka State Nursing Council",
-        "Kerala Nurses and Midwives Council", "Madhya Pradesh Nurses Registration Council",
-        "Maharashtra Nursing Council", "Manipur Nursing Council", "Meghalaya Nursing Council",
-        "Mizoram Nursing Council", "Nagaland Nursing Council", "Odisha Nurses & Midwives Council",
-        "Punjab Nurses Registration Council", "Rajasthan Nursing Council", "Sikkim Nursing Council",
-        "Tamil Nadu Nurses & Midwives Council", "Telangana State Nursing Council",
-        "Tripura Nursing Council", "Uttar Pradesh Nurses & Midwives Council",
-        "Uttarakhand Nurses & Midwives Council", "West Bengal Nursing Council",
-        "Other / Foreign Council", "Not Applicable"
-    ])
+    reg_auth = st.selectbox("Registration Authority", options=[
+        "Choose an option...",  # Placeholder
+        "Andhra Pradesh Nurses & Midwives Council", 
+        "Arunachal Pradesh Nursing Council",
+        "Assam Nurses' Midwives' & Health Visitors' Council", 
+        "Bihar Nurses Registration Council",
+        "Chhattisgarh Nursing Council", 
+        "Delhi Nursing Council", 
+        "Goa Nursing Council",
+        "Gujarat Nursing Council", 
+        "Haryana Nurses & Nurse-Midwives Council",
+        "Himachal Pradesh Nurses Registration Council", 
+        "Indian Nursing Council (NRTS)",
+        "Jharkhand Nurses Registration Council", 
+        "Karnataka State Nursing Council",
+        "Kerala Nurses and Midwives Council", 
+        "Madhya Pradesh Nurses Registration Council",
+        "Maharashtra Nursing Council", 
+        "Manipur Nursing Council", 
+        "Meghalaya Nursing Council",
+        "Mizoram Nursing Council", 
+        "Nagaland Nursing Council", 
+        "Odisha Nurses & Midwives Council",
+        "Punjab Nurses Registration Council", 
+        "Rajasthan Nursing Council", 
+        "Sikkim Nursing Council",
+        "Tamil Nadu Nurses & Midwives Council", 
+        "Telangana State Nursing Council",
+        "Tripura Nursing Council", 
+        "Uttar Pradesh Nurses & Midwives Council",
+        "Uttarakhand Nurses & Midwives Council", 
+        "West Bengal Nursing Council",
+        "Other / Foreign Council", 
+        "Not Applicable"
+    ]
+)
     
     mobile = st.text_input("Mobile Number")
     college = st.text_input("College / Institute")
@@ -221,3 +241,4 @@ else:
     if st.button("Logout"):
         st.session_state.clear()
         st.rerun()
+
