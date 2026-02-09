@@ -1,186 +1,151 @@
 import streamlit as st
 import pandas as pd
-import random
-import time
-import requests
-import base64
+import random, time, requests
 from datetime import date
 
 # ================= CONFIG =================
 TOTAL_QUESTIONS = 25
-TOTAL_TEST_TIME = 25 * 60
-
 DEFAULT_Q_TIME = 60
 REDUCED_Q_TIME = 40
 SUSPICIOUS_THRESHOLD = 55
 SUSPICIOUS_LIMIT = 3
 
-ADMIN_MASTER_KEY = "Medanta@Admin2026"
+ADMIN_KEY = "Medanta@Admin2026"
 GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz1qT4L2mNOusKQ3wjTHwh4tbPHGn0Kb-ek9Anyyn9J7YJKrzCYzQvOKv-FLYlsHmAS/exec"
 
-st.set_page_config(page_title="Medanta Staff Assessment", layout="centered")
+st.set_page_config(
+    page_title="Medanta Staff Assessment",
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
 
-# ================= CSS =================
+# ================= STYLES =================
 st.markdown("""
 <style>
-.stApp { background:#F7F9FC; }
+body { background:#F6F8FB; }
 
-.block-container { max-width:900px; padding:1rem; }
+.center { text-align:center; }
 
-.main-title {
-    text-align:center;
-    color:#0B5394;
-    font-weight:800;
-    font-size:28px;
-    margin-bottom:12px;
+.hero {
+    background:linear-gradient(135deg,#1C1F26,#3A3F4B);
+    color:white;
+    padding:28px;
+    border-radius:18px;
+    margin-bottom:24px;
 }
 
 .card {
     background:white;
     padding:22px;
-    border-radius:18px;
-    box-shadow:0 10px 25px rgba(0,0,0,0.08);
-    margin-bottom:22px;
+    border-radius:16px;
+    box-shadow:0 10px 24px rgba(0,0,0,0.06);
+    margin-bottom:20px;
 }
 
-.section-title {
-    font-size:20px;
-    font-weight:700;
-    color:#0B5394;
-    margin-bottom:14px;
-}
-
-.timer-box {
-    position:fixed;
-    top:100px;
-    right:20px;
-    background:white;
-    padding:12px 16px;
-    border-radius:12px;
-    box-shadow:0 6px 18px rgba(0,0,0,0.15);
-    border-left:6px solid #0B5394;
-    z-index:9999;
-    font-size:14px;
-}
-
-.tip-box {
-    background:#EDF4EE;
-    border-left:6px solid #4F772D;
-    padding:14px;
-    border-radius:12px;
-    font-size:14px;
-}
-
-.stButton > button {
-    background:linear-gradient(90deg,#F28C28,#E6761C);
-    color:white;
-    border-radius:14px;
-    padding:12px 22px;
-    font-weight:600;
-    width:100%;
-}
-
-@media (max-width:768px) {
-    .timer-box {
-        bottom:16px;
-        top:auto;
-        left:16px;
-        right:16px;
-        text-align:center;
-    }
-}
-</style>
-""", unsafe_allow_html=True)
-
-# ================= HEADER =================
-
-logo_base64 = base64.b64encode(open("MHPL logo 2.png","rb").read()).decode()
-
-st.markdown(f"""
-<div style="display:flex; justify-content:center; margin-bottom:8px;">
-    <img src="data:image/png;base64,{logo_base64}" width="140">
-</div>
-""", unsafe_allow_html=True)
-
-st.markdown('<div class="main-title">Medanta Staff Assessment</div>', unsafe_allow_html=True)
-
-# ---- INTEGRITY (TOP) ----
-st.markdown("""
-<div style="
+.integrity {
     background:#FFF4F4;
     border-left:6px solid #B30000;
     padding:14px;
     border-radius:12px;
-    margin-bottom:14px;
     font-size:14px;
     color:#5A1A1A;
-">
-<b>Integrity Declaration</b><br>
-This assessment is the exclusive intellectual property of
-<b>Medanta Hospital, Lucknow</b>.<br>
-Sharing, copying, recording, or receiving external assistance
-is strictly prohibited and may lead to disciplinary action.
-</div>
-""", unsafe_allow_html=True)
+    margin-bottom:20px;
+}
 
-# ---- HAR EK JAAN ANMOL ----
-st.markdown("""
-<div style="
-    background:linear-gradient(90deg,#B30000,#6E6E6E);
-    padding:18px;
-    border-radius:16px;
+.timer {
+    background:#0B5394;
+    color:white;
+    padding:12px;
+    border-radius:12px;
     text-align:center;
-    margin-bottom:26px;
-">
-    <div style="color:white; font-size:22px; font-weight:700;">
-        हर एक जान अनमोल
-    </div>
-    <div style="color:#F2F2F2; font-size:13px; margin-top:6px;">
-        Compassion • Care • Clinical Excellence
-    </div>
-</div>
+    font-weight:600;
+    margin-bottom:16px;
+}
+
+.slogan {
+    color:#B30000;
+    font-size:22px;
+    font-weight:700;
+    margin-top:6px;
+}
+
+.subtle {
+    color:#666;
+    font-size:13px;
+}
+
+.tip {
+    background:#E8F4FF;
+    padding:14px;
+    border-radius:12px;
+    margin-top:14px;
+}
+
+@media(max-width:600px){
+    .hero { padding:20px; }
+    .card { padding:16px; }
+}
+</style>
 """, unsafe_allow_html=True)
 
-# ================= SESSION STATE =================
+# ================= SESSION =================
 if "started" not in st.session_state:
     st.session_state.update({
         "started": False,
         "questions": [],
         "answers": {},
-        "q_index": 0,
+        "idx": 0,
         "start_time": None,
-        "question_start_time": None,
-        "current_q_time_limit": DEFAULT_Q_TIME,
-        "slow_streak": 0,
-        "show_result": False,
+        "q_start": None,
+        "q_limit": DEFAULT_Q_TIME,
+        "slow": 0,
+        "result": False,
         "candidate": {},
-        "admin_unlocked": False,
-        "assessment_level": "Beginner"
+        "admin": False,
+        "level": "Beginner"
     })
 
-# ================= SIDEBAR ADMIN =================
+# ================= ADMIN (HIDDEN) =================
 with st.sidebar:
-    st.markdown("### ⚙️")
-    if st.checkbox("Admin Controls"):
-        if not st.session_state.admin_unlocked:
-            key = st.text_input("Admin Key", type="password")
+    if st.checkbox("⚙️"):
+        if not st.session_state.admin:
+            k = st.text_input("Admin Key", type="password")
             if st.button("Unlock"):
-                if key == ADMIN_MASTER_KEY:
-                    st.session_state.admin_unlocked = True
-                    st.success("Admin Unlocked")
+                if k == ADMIN_KEY:
+                    st.session_state.admin = True
+                    st.success("Unlocked")
                 else:
                     st.error("Invalid Key")
         else:
-            st.session_state.assessment_level = st.selectbox(
+            st.session_state.level = st.selectbox(
                 "Assessment Level",
-                ["Beginner", "Intermediate", "Advanced"]
+                ["Beginner","Intermediate","Advanced"]
             )
+
+# ================= HEADER =================
+st.image("MHPL logo 2.png", width=140)
+
+st.markdown("<h2 class='center'>Medanta Staff Assessment</h2>", unsafe_allow_html=True)
+
+st.markdown("""
+<div class="integrity">
+<b>Integrity Declaration</b><br>
+This assessment is the exclusive intellectual property of
+<b>Medanta Hospital, Lucknow</b>.  
+Sharing, copying, recording, or external assistance is strictly prohibited.
+</div>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+<div class="center slogan">हर एक जान अनमोल</div>
+<div class="center subtle">Compassion • Care • Clinical Excellence</div>
+""", unsafe_allow_html=True)
 
 # ================= STAFF INFO =================
 if not st.session_state.started:
 
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">Staff Information</div>', unsafe_allow_html=True)
+    st.markdown("<div class='card'>", unsafe_allow_html=True)
+    st.subheader("Staff Information")
 
     name = st.text_input("Full Name")
     dob = st.date_input("Date of Birth", min_value=date(1960,1,1))
@@ -192,7 +157,7 @@ if not st.session_state.started:
 
     if st.button("Start Assessment"):
         if not name or not mobile:
-            st.warning("Please fill mandatory fields.")
+            st.warning("Name and Mobile are mandatory")
             st.stop()
 
         st.session_state.candidate = {
@@ -205,18 +170,103 @@ if not st.session_state.started:
             "college": college
         }
 
-        tech_df = pd.read_excel("questions.xlsx")
-        beh_df = pd.read_excel("Behavioural_Questions_100_with_Competency.xlsx")
+        tech = pd.read_excel("questions.xlsx")
+        beh = pd.read_excel("Behavioural_Questions_100_with_Competency.xlsx")
 
-        tech_count = random.randint(17,20)
-        beh_count = TOTAL_QUESTIONS - tech_count
+        t = random.randint(17,20)
+        b = TOTAL_QUESTIONS - t
 
-        tech_q = tech_df[tech_df["level"].str.lower()==st.session_state.assessment_level.lower()].sample(tech_count)
-        beh_q = beh_df.sample(beh_count)
+        tq = tech[tech["level"].str.lower()==st.session_state.level.lower()].sample(t)
+        bq = beh.sample(b)
 
-        st.session_state.questions = pd.concat([tech_q, beh_q]).sample(TOTAL_QUESTIONS).to_dict("records")
+        st.session_state.questions = (
+            pd.concat([tq,bq]).sample(TOTAL_QUESTIONS).to_dict("records")
+        )
+
         st.session_state.start_time = time.time()
         st.session_state.started = True
         st.rerun()
 
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+
+# ================= EXAM =================
+elif not st.session_state.result:
+
+    if st.session_state.q_start is None:
+        st.session_state.q_start = time.time()
+
+    q_elapsed = int(time.time() - st.session_state.q_start)
+    q_remain = max(0, st.session_state.q_limit - q_elapsed)
+
+    st.markdown(f"<div class='timer'>⏱ Question Time: {q_remain}s</div>", unsafe_allow_html=True)
+
+    q = st.session_state.questions[st.session_state.idx]
+
+    st.markdown("<div class='card'>", unsafe_allow_html=True)
+    st.markdown(f"**Question {st.session_state.idx+1}/25**  \n{q['question']}")
+
+    choice = st.radio(
+        "Choose one:",
+        [q["option_a"],q["option_b"],q["option_c"],q["option_d"]],
+        key=f"q{st.session_state.idx}"
+    )
+
+    if st.button("Next"):
+        if q_elapsed >= SUSPICIOUS_THRESHOLD:
+            st.session_state.slow += 1
+        else:
+            st.session_state.slow = 0
+
+        if st.session_state.slow >= SUSPICIOUS_LIMIT:
+            st.session_state.q_limit = REDUCED_Q_TIME
+
+        st.session_state.answers[f"Q{st.session_state.idx+1}"] = choice
+        st.session_state.idx += 1
+        st.session_state.q_start = None
+
+        if st.session_state.idx >= TOTAL_QUESTIONS:
+            st.session_state.result = True
+
+        st.rerun()
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+# ================= RESULT =================
+else:
+    correct = sum(
+        1 for i,q in enumerate(st.session_state.questions)
+        if st.session_state.answers.get(f"Q{i+1}") == q["correct_answer"]
+    )
+
+    mins,secs = divmod(int(time.time()-st.session_state.start_time),60)
+    result = "CLEARED" if correct>=15 else "NOT CLEARED"
+
+    tip = (
+        "You show strong potential. Keep reinforcing safe clinical practices."
+        if correct>=15 else
+        "Focus on protocols and calm decision-making. Improvement is absolutely achievable."
+    )
+
+    st.markdown(f"""
+    <div class="card">
+    <h3>Assessment Report</h3>
+    <b>Score:</b> {correct}/25<br>
+    <b>Result:</b> {result}<br>
+    <b>Time Taken:</b> {mins}m {secs}s
+    <div class="tip"><b>Professional Insight:</b><br>{tip}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    payload = {**st.session_state.candidate,
+        "score": f"{correct}/25",
+        "duration": f"{mins}m {secs}s",
+        "result": result,
+        **st.session_state.answers
+    }
+
+    try:
+        requests.post(GOOGLE_SCRIPT_URL, json=payload, timeout=20)
+    except:
+        pass
+
+    st.success("Assessment submitted successfully.")
