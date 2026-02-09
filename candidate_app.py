@@ -48,7 +48,7 @@ with col2:
 
 st.markdown("""
 <h3 style="text-align:center; color:#0B5394;">Staff Assessment & Competency Evaluation</h3>
-<p style="text-align:center; color:#555;">Medanta – The Medicity</p>
+<p style="text-align:center; color:#555;">Medanta – Lucknow</p>
 <hr>
 """, unsafe_allow_html=True)
 
@@ -218,5 +218,6 @@ else:
 
     requests.post(BRIDGE_URL, json=payload, timeout=10)
     st.stop()
+
 
 
