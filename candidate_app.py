@@ -6,7 +6,7 @@ import random
 from datetime import date
 
 # ================= CONFIG =================
-BRIDGE_URL = "https://script.google.com/macros/s/AKfycbz1qT4L2mNOusKQ3wjTHwh4tbPHGn0Kb-ek9Anyyn9J7YJKrzCYzQvOKv-FLYlsHmAS/exec"
+BRIDGE_URL = "https://script.google.com/macros/s/AKfycbyDj2cx9m9M7oGvoOxNqQlSs0c1RedyyaMK27AJp3DpGguJzWw_bAM91Z4R_yRbWh0q/exec"
 
 TOTAL_TEST_TIME = 25 * 60  # 25 minutes
 
@@ -283,3 +283,4 @@ else:
         pass
 
     st.success("Assessment submitted successfully.")
+
