@@ -13,8 +13,8 @@ SUSPICIOUS_THRESHOLD = 55
 SUSPICIOUS_LIMIT = 3
 
 ADMIN_KEY = "Medanta@Admin2026"
-# Replace with your new Deployment URL from Google Apps Script
-GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzP--MA4yBRrm59UWWiSk6xFsaSm2TsBb4aoq4GsSDx3loYSL0R90QV2J0c3XCICGde/exec"
+# Your Updated Web App URL
+GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbUvcrZG6D9dW-q8j4Zc3FdcGUpn55CvxUXvoMG7yq5Z04Y8xXRYVwAtzHikHcX2dYC/exec"
 
 st.set_page_config(
     page_title="Medanta Staff Assessment",
@@ -83,7 +83,6 @@ with st.sidebar:
                 ["Beginner", "Intermediate", "Advanced"],
                 index=["Beginner", "Intermediate", "Advanced"].index(st.session_state.level)
             )
-            st.info(f"Current Level: {st.session_state.level}")
             if st.button("Lock Admin"):
                 st.session_state.admin = False
                 st.rerun()
@@ -102,56 +101,33 @@ if not st.session_state.started:
     dob = st.date_input("Date of Birth", min_value=date(1960,1,1))
     qualification = st.text_input("Qualification")
     category = st.selectbox("Staff Category", ["Nursing","Non-Nursing","Other"])
-    
     reg_no = st.text_input("Registration Number")
     
-    # Comprehensive Registration Authority Dropdown
-    reg_auth = st.selectbox("Registration Authority", options=[
-        "Choose an option...",  # Placeholder
-        "Andhra Pradesh Nurses & Midwives Council", 
-        "Arunachal Pradesh Nursing Council",
-        "Assam Nurses' Midwives' & Health Visitors' Council", 
-        "Bihar Nurses Registration Council",
-        "Chhattisgarh Nursing Council", 
-        "Delhi Nursing Council", 
-        "Goa Nursing Council",
-        "Gujarat Nursing Council", 
-        "Haryana Nurses & Nurse-Midwives Council",
-        "Himachal Pradesh Nurses Registration Council", 
-        "Indian Nursing Council (NRTS)",
-        "Jharkhand Nurses Registration Council", 
-        "Karnataka State Nursing Council",
-        "Kerala Nurses and Midwives Council", 
-        "Madhya Pradesh Nurses Registration Council",
-        "Maharashtra Nursing Council", 
-        "Manipur Nursing Council", 
-        "Meghalaya Nursing Council",
-        "Mizoram Nursing Council", 
-        "Nagaland Nursing Council", 
-        "Odisha Nurses & Midwives Council",
-        "Punjab Nurses Registration Council", 
-        "Rajasthan Nursing Council", 
-        "Sikkim Nursing Council",
-        "Tamil Nadu Nurses & Midwives Council", 
-        "Telangana State Nursing Council",
-        "Tripura Nursing Council", 
-        "Uttar Pradesh Nurses & Midwives Council",
-        "Uttarakhand Nurses & Midwives Council", 
-        "West Bengal Nursing Council",
-        "Other / Foreign Council", 
-        "Not Applicable"
-    ]
-)
+    reg_auth = st.selectbox("Select the Nursing Registration authority", [
+        "Choose an option...", "Andhra Pradesh Nurses & Midwives Council", "Arunachal Pradesh Nursing Council",
+        "Assam Nurses' Midwives' & Health Visitors' Council", "Bihar Nurses Registration Council",
+        "Chhattisgarh Nursing Council", "Delhi Nursing Council", "Goa Nursing Council",
+        "Gujarat Nursing Council", "Haryana Nurses & Nurse-Midwives Council",
+        "Himachal Pradesh Nurses Registration Council", "Indian Nursing Council (NRTS)",
+        "Jharkhand Nurses Registration Council", "Karnataka State Nursing Council",
+        "Kerala Nurses and Midwives Council", "Madhya Pradesh Nurses Registration Council",
+        "Maharashtra Nursing Council", "Manipur Nursing Council", "Meghalaya Nursing Council",
+        "Mizoram Nursing Council", "Nagaland Nursing Council", "Odisha Nurses & Midwives Council",
+        "Punjab Nurses Registration Council", "Rajasthan Nursing Council", "Sikkim Nursing Council",
+        "Tamil Nadu Nurses & Midwives Council", "Telangana State Nursing Council",
+        "Tripura Nursing Council", "Uttar Pradesh Nurses & Midwives Council",
+        "Uttarakhand Nurses & Midwives Council", "West Bengal Nursing Council",
+        "Other / Foreign Council", "Not Applicable"
+    ])
     
     mobile = st.text_input("Mobile Number")
     college = st.text_input("College / Institute")
 
     if st.button("Start Assessment"):
-        if not name or not mobile:
-            st.warning("Please fill Name and Mobile Number.")
+        if not name or not mobile or reg_auth == "Choose an option...":
+            st.warning("Please fill Name, Mobile, and Select the Registration Authority.")
         else:
             try:
-                # Load Excel Files
                 tech = normalize_columns(pd.read_excel("questions.xlsx"))
                 beh = normalize_columns(pd.read_excel("Behavioural_Questions_100_with_Competency.xlsx"))
 
@@ -162,7 +138,12 @@ if not st.session_state.started:
                 beh_q = beh.sample(b_count)
 
                 st.session_state.questions = pd.concat([tech_q, beh_q]).sample(TOTAL_QUESTIONS).to_dict("records")
+                
+                # Generate Bridge Key
+                bridge_id = f"MED-{random.randint(1000, 9999)}-{int(time.time() % 10000)}"
+                
                 st.session_state.candidate = {
+                    "bridge_key": bridge_id,
                     "name": name, "dob": str(dob), "qualification": qualification,
                     "category": category, "registration_number": reg_no,
                     "registration_authority": reg_auth, "mobile": mobile, "college": college
@@ -171,7 +152,7 @@ if not st.session_state.started:
                 st.session_state.started = True
                 st.rerun()
             except Exception as e:
-                st.error(f"Error loading questions: {e}")
+                st.error(f"Error loading files: {e}")
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ================= EXAM INTERFACE =================
@@ -214,31 +195,39 @@ else:
 
     st.markdown(f"""
     <div class="card" style="text-align:center;">
-        <h3>Assessment Result</h3>
-        <h1 style="color:#0B5394;">{correct} / {TOTAL_QUESTIONS}</h1>
+        <h3 style="color:#666;">Assessment ID: {st.session_state.candidate['bridge_key']}</h3>
+        <h1 style="color:#0B5394;">Score: {correct} / {TOTAL_QUESTIONS}</h1>
         <p><b>Status:</b> {result_status}</p>
-        <p><b>Time:</b> {mins}m {secs}s | <b>Level:</b> {st.session_state.level}</p>
+        <p><b>Level:</b> {st.session_state.level} | <b>Time:</b> {mins}m {secs}s</p>
     </div>
     """, unsafe_allow_html=True)
 
-    # Sync to Google Sheets
+    # Construct Extended Payload for Google Sheets
     payload = {
         **st.session_state.candidate,
         "score": f"{correct}/{TOTAL_QUESTIONS}",
         "duration": f"{mins}m {secs}s",
         "result": result_status,
-        "level": st.session_state.level,
-        **st.session_state.answers
+        "level": st.session_state.level
     }
 
-    try:
-        response = requests.post(GOOGLE_SCRIPT_URL, json=payload, timeout=15)
-        if response.status_code == 200:
-            st.success("Results submitted successfully.")
-    except:
-        st.warning("Connection error. Please take a screenshot of your score.")
+    # Add each answer + correctness flag
+    for i in range(TOTAL_QUESTIONS):
+        user_ans = st.session_state.answers.get(f"Q{i+1}", "No Answer")
+        real_correct_ans = st.session_state.questions[i]["correct_answer"]
+        payload[f"Q{i+1}"] = user_ans
+        payload[f"Q{i+1}_is_correct"] = (user_ans == real_correct_ans)
 
-    if st.button("Logout"):
+    # Submit to Google Sheets
+    if "submitted" not in st.session_state:
+        try:
+            response = requests.post(GOOGLE_SCRIPT_URL, json=payload, timeout=20)
+            if response.status_code == 200:
+                st.success(f"Successfully Submitted. Reference: {st.session_state.candidate['bridge_key']}")
+                st.session_state.submitted = True
+        except:
+            st.error("Submission failed. Please screenshot this page.")
+
+    if st.button("Finish & Exit"):
         st.session_state.clear()
         st.rerun()
-
